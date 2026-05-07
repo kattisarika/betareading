@@ -145,28 +145,28 @@ export default function App() {
           <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="bk1" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#6366f1" />
-                <stop offset="100%" stopColor="#4f46e5" />
+                <stop offset="0%" stopColor="#8C1515" />
+                <stop offset="100%" stopColor="#651014" />
               </linearGradient>
               <linearGradient id="bk2" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#ec4899" />
-                <stop offset="100%" stopColor="#db2777" />
+                <stop offset="0%" stopColor="#E98300" />
+                <stop offset="100%" stopColor="#B8650F" />
               </linearGradient>
               <linearGradient id="bk3" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#22d3ee" />
-                <stop offset="100%" stopColor="#0891b2" />
+                <stop offset="0%" stopColor="#0098DB" />
+                <stop offset="100%" stopColor="#007C92" />
               </linearGradient>
               <linearGradient id="bk4" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#f59e0b" />
-                <stop offset="100%" stopColor="#d97706" />
+                <stop offset="0%" stopColor="#6FA287" />
+                <stop offset="100%" stopColor="#175E54" />
               </linearGradient>
               <linearGradient id="bk5" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#a78bfa" />
-                <stop offset="100%" stopColor="#7c3aed" />
+                <stop offset="0%" stopColor="#B26F16" />
+                <stop offset="100%" stopColor="#5E3032" />
               </linearGradient>
               <radialGradient id="floor" cx="0.5" cy="0.5" r="0.5">
-                <stop offset="0%" stopColor="rgba(99,102,241,0.35)" />
-                <stop offset="100%" stopColor="rgba(99,102,241,0)" />
+                <stop offset="0%" stopColor="rgba(140,21,21,0.32)" />
+                <stop offset="100%" stopColor="rgba(140,21,21,0)" />
               </radialGradient>
             </defs>
             <ellipse cx="160" cy="220" rx="120" ry="14" fill="url(#floor)" />
@@ -182,10 +182,10 @@ export default function App() {
               <rect x="34" y="12" width="150" height="34" rx="4" fill="url(#bk5)" transform="rotate(4 109 29)" />
               <rect x="34" y="20" width="150" height="3" fill="rgba(255,255,255,0.25)" transform="rotate(4 109 29)" />
             </g>
-            <circle cx="40" cy="50" r="3" fill="#ec4899" opacity="0.6" />
-            <circle cx="285" cy="80" r="4" fill="#6366f1" opacity="0.5" />
-            <circle cx="295" cy="170" r="3" fill="#22d3ee" opacity="0.7" />
-            <circle cx="30" cy="180" r="2.5" fill="#f59e0b" opacity="0.7" />
+            <circle cx="40" cy="50" r="3" fill="#E98300" opacity="0.7" />
+            <circle cx="285" cy="80" r="4" fill="#8C1515" opacity="0.55" />
+            <circle cx="295" cy="170" r="3" fill="#0098DB" opacity="0.7" />
+            <circle cx="30" cy="180" r="2.5" fill="#6FA287" opacity="0.8" />
           </svg>
         </div>
         <h1 className="brand-title">Welcome to Book Club</h1>
