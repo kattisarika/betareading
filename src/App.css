@@ -1017,3 +1017,112 @@ body {
   background: #525659;
 }
 
+
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+  .app-shell {
+    padding: 24px 4vw;
+  }
+  .dashboard {
+    padding: 28px clamp(16px, 4vw, 32px);
+    border-radius: 18px;
+  }
+  .reader-tab-frame {
+    height: calc(100vh - 320px);
+    min-height: 360px;
+  }
+  .role-card {
+    aspect-ratio: auto;
+    min-height: 220px;
+  }
+  .brand-tagline {
+    margin-bottom: 32px;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding: 16px 12px;
+  }
+  .dashboard {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .dashboard-title {
+    font-size: 1.35rem;
+  }
+  .tabs {
+    gap: 4px;
+    padding: 4px;
+  }
+  .tab {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+  .tab-icon {
+    font-size: 1rem;
+  }
+  .role-grid {
+    gap: 16px;
+  }
+  .role-card {
+    padding: 24px;
+    min-height: 180px;
+    border-radius: 18px;
+  }
+  .auth-card {
+    padding: 24px;
+    border-radius: 18px;
+  }
+  .book-item {
+    padding: 14px 16px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .book-actions {
+    justify-content: flex-start;
+  }
+  .book-actions .btn-primary,
+  .book-actions .btn-ghost {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+  .reader-tab-frame {
+    height: calc(100vh - 280px);
+    min-height: 320px;
+  }
+  .reader-tab-title {
+    font-size: 0.95rem;
+  }
+  .hero-art {
+    max-width: 240px;
+    margin-bottom: 16px;
+  }
+  .brand-tagline {
+    font-size: 0.95rem;
+    margin-bottom: 24px;
+  }
+  .chat-bubble {
+    max-width: 88%;
+  }
+  .upload-form {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .tab span:not(.tab-icon) {
+    display: none;
+  }
+  .tab {
+    flex: 1 1 0;
+    padding: 10px 8px;
+  }
+}
