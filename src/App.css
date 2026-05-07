@@ -45,6 +45,29 @@ body {
   flex-direction: column;
 }
 
+.hero-art {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto 24px;
+  filter: drop-shadow(0 18px 24px rgba(99, 102, 241, 0.25));
+  animation: hero-float 6s ease-in-out infinite;
+}
+
+.hero-art svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-art { animation: none; }
+}
+
 .brand-title {
   font-size: clamp(2rem, 5vw, 3.25rem);
   font-weight: 800;

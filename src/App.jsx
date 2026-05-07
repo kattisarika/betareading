@@ -141,6 +141,53 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="container">
+        <div className="hero-art" aria-hidden="true">
+          <svg viewBox="0 0 320 240" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="bk1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#6366f1" />
+                <stop offset="100%" stopColor="#4f46e5" />
+              </linearGradient>
+              <linearGradient id="bk2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#ec4899" />
+                <stop offset="100%" stopColor="#db2777" />
+              </linearGradient>
+              <linearGradient id="bk3" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#22d3ee" />
+                <stop offset="100%" stopColor="#0891b2" />
+              </linearGradient>
+              <linearGradient id="bk4" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#f59e0b" />
+                <stop offset="100%" stopColor="#d97706" />
+              </linearGradient>
+              <linearGradient id="bk5" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#a78bfa" />
+                <stop offset="100%" stopColor="#7c3aed" />
+              </linearGradient>
+              <radialGradient id="floor" cx="0.5" cy="0.5" r="0.5">
+                <stop offset="0%" stopColor="rgba(99,102,241,0.35)" />
+                <stop offset="100%" stopColor="rgba(99,102,241,0)" />
+              </radialGradient>
+            </defs>
+            <ellipse cx="160" cy="220" rx="120" ry="14" fill="url(#floor)" />
+            <g transform="translate(60 40)">
+              <rect x="0" y="140" width="200" height="34" rx="4" fill="url(#bk1)" />
+              <rect x="0" y="148" width="200" height="3" fill="rgba(255,255,255,0.25)" />
+              <rect x="14" y="108" width="180" height="34" rx="4" fill="url(#bk2)" transform="rotate(-3 104 125)" />
+              <rect x="14" y="116" width="180" height="3" fill="rgba(255,255,255,0.25)" transform="rotate(-3 104 125)" />
+              <rect x="6" y="76" width="190" height="34" rx="4" fill="url(#bk3)" transform="rotate(2 101 93)" />
+              <rect x="6" y="84" width="190" height="3" fill="rgba(255,255,255,0.25)" transform="rotate(2 101 93)" />
+              <rect x="22" y="44" width="170" height="34" rx="4" fill="url(#bk4)" transform="rotate(-2 107 61)" />
+              <rect x="22" y="52" width="170" height="3" fill="rgba(255,255,255,0.25)" transform="rotate(-2 107 61)" />
+              <rect x="34" y="12" width="150" height="34" rx="4" fill="url(#bk5)" transform="rotate(4 109 29)" />
+              <rect x="34" y="20" width="150" height="3" fill="rgba(255,255,255,0.25)" transform="rotate(4 109 29)" />
+            </g>
+            <circle cx="40" cy="50" r="3" fill="#ec4899" opacity="0.6" />
+            <circle cx="285" cy="80" r="4" fill="#6366f1" opacity="0.5" />
+            <circle cx="295" cy="170" r="3" fill="#22d3ee" opacity="0.7" />
+            <circle cx="30" cy="180" r="2.5" fill="#f59e0b" opacity="0.7" />
+          </svg>
+        </div>
         <h1 className="brand-title">Welcome to Book Club</h1>
         <p className="brand-tagline brand-tagline-accent" style={{ marginBottom: 8 }}>
           Your one stop for any kind of book reading using voice enabled reading service.
