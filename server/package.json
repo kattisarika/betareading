@@ -1,0 +1,19 @@
+{
+  "name": "betareading-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --watch-path=index.js --watch-path=db.js --watch-path=.env index.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-polly": "^3.1045.0",
+    "@aws-sdk/client-s3": "^3.1044.0",
+    "@aws-sdk/s3-request-presigner": "^3.1044.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "mongoose": "^8.23.1",
+    "pdf-parse": "^2.4.5"
+  }
+}
