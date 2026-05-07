@@ -523,6 +523,14 @@ app.post('/api/reviews', async (req, res) => {
   }
 });
 
+if (process.env.NODE_ENV === 'production') {
+  const distDir = join(__dirname, '..', 'dist');
+  app.use(express.static(distDir));
+  app.get(/^\/(?!api\/).*/, (req, res) => {
+    res.sendFile(join(distDir, 'index.html'));
+  });
+}
+
 app.listen(PORT, () => {
   console.log(`✅ BetaReading API listening on http://localhost:${PORT}`);
 });

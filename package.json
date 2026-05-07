@@ -7,7 +7,12 @@
     "dev:server": "npm --prefix server run dev",
     "dev:all": "concurrently -n web,api -c blue,magenta \"npm run dev\" \"npm run dev:server\"",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server/index.js",
+    "heroku-postbuild": "npm --prefix server install && npm run build"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.5",
