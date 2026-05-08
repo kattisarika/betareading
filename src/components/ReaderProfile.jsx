@@ -34,6 +34,13 @@ const NON_FICTION_SUBGENRES = [
   { value: 'travel', label: 'Travel' },
 ];
 
+const AGE_GROUPS = [
+  { value: 'kids', label: 'Kids' },
+  { value: 'preteens_13', label: 'Preteens 13+' },
+  { value: 'teenager_18', label: 'Teenager 18+' },
+  { value: 'adults_25', label: 'Adults 25+' },
+];
+
 const FICTION_SUBGENRE_VALUES = new Set(FICTION_SUBGENRES.map((g) => g.value));
 const NON_FICTION_SUBGENRE_VALUES = new Set(NON_FICTION_SUBGENRES.map((g) => g.value));
 
@@ -467,6 +474,9 @@ function initialGenres(profile) {
 
 function ReaderProfileForm({ user, savedProfile, setSavedProfile }) {
   const [selected, setSelected] = useState(() => new Set(initialGenres(savedProfile)));
+  const [favoriteAuthors, setFavoriteAuthors] = useState(savedProfile?.favoriteAuthors || '');
+  const [ageGroup, setAgeGroup] = useState(savedProfile?.ageGroup || '');
+  const [qualifications, setQualifications] = useState(savedProfile?.qualifications || '');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
 
@@ -483,6 +493,9 @@ function ReaderProfileForm({ user, savedProfile, setSavedProfile }) {
     setMessage(null);
     const genres = Array.from(selected);
     if (!genres.length) { setMessage({ type: 'error', text: 'Please select at least one genre.' }); return; }
+    if (!favoriteAuthors.trim()) { setMessage({ type: 'error', text: 'Please list authors or books you read.' }); return; }
+    if (!ageGroup) { setMessage({ type: 'error', text: 'Please select an age group.' }); return; }
+    if (!qualifications.trim()) { setMessage({ type: 'error', text: 'Please enter your qualifications or what you are studying.' }); return; }
     setSaving(true);
     try {
       const { profile } = await saveUserProfile({
@@ -491,6 +504,9 @@ function ReaderProfileForm({ user, savedProfile, setSavedProfile }) {
         name: user?.name,
         role: 'reader',
         genres,
+        favoriteAuthors: favoriteAuthors.trim(),
+        ageGroup,
+        qualifications: qualifications.trim(),
       });
       setSavedProfile(profile);
       setMessage({ type: 'success', text: 'Profile saved!' });
@@ -540,6 +556,43 @@ function ReaderProfileForm({ user, savedProfile, setSavedProfile }) {
         </div>
       </fieldset>
 
+      <label className="field" style={{ marginTop: 20 }}>
+        <span>Authors or books you read *</span>
+        <textarea
+          rows="3"
+          value={favoriteAuthors}
+          onChange={(e) => setFavoriteAuthors(e.target.value)}
+          placeholder="e.g. Stephen King, Agatha Christie, Harry Potter series"
+          required
+        />
+      </label>
+
+      <label className="field" style={{ marginTop: 16 }}>
+        <span>Age group *</span>
+        <select
+          className="select-input"
+          value={ageGroup}
+          onChange={(e) => setAgeGroup(e.target.value)}
+          required
+        >
+          <option value="">Select an age group…</option>
+          {AGE_GROUPS.map((g) => (
+            <option key={g.value} value={g.value}>{g.label}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="field" style={{ marginTop: 16 }}>
+        <span>Qualifications or what you are studying *</span>
+        <input
+          type="text"
+          value={qualifications}
+          onChange={(e) => setQualifications(e.target.value)}
+          placeholder="e.g. BA English Literature, High School, PhD candidate"
+          required
+        />
+      </label>
+
       {message && <div className={`flash flash-${message.type}`} style={{ marginTop: '16px' }}>{message.text}</div>}
 
       <button type="submit" className="btn-primary" style={{ marginTop: '20px' }} disabled={saving}>
@@ -568,7 +621,8 @@ export default function ReaderProfile({ user }) {
         if (cancelled) return;
         if (profile) setSavedProfile(profile);
         const hasGenres = (profile?.genres?.length || 0) > 0 || !!profile?.genre;
-        if (!hasGenres && !cancelled) setTab('profile');
+        const hasRequiredExtras = !!profile?.favoriteAuthors && !!profile?.ageGroup && !!profile?.qualifications;
+        if ((!hasGenres || !hasRequiredExtras) && !cancelled) setTab('profile');
       } catch {
         // Surface errors on the profile tab when the user opens it.
       } finally {

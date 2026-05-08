@@ -67,6 +67,7 @@ const NON_FICTION_SUBGENRES = [
   'cooking', 'travel',
 ];
 const ALL_READER_GENRES = new Set([...GENRES, ...FICTION_SUBGENRES, ...NON_FICTION_SUBGENRES]);
+const READER_AGE_GROUPS = new Set(['kids', 'preteens_13', 'teenager_18', 'adults_25']);
 
 function deriveBroadGenre(genres) {
   if (!Array.isArray(genres) || genres.length === 0) return null;
@@ -334,11 +335,13 @@ app.get('/api/readers', async (req, res) => {
 
 app.post('/api/user-profile', async (req, res) => {
   try {
-    const { userId, email, name, role, genre, genres } = req.body || {};
+    const { userId, email, name, role, genre, genres, favoriteAuthors, ageGroup, qualifications } = req.body || {};
     if (!userId) return res.status(400).json({ error: 'userId required' });
     if (!ROLES.includes(role)) return res.status(400).json({ error: 'Invalid role' });
     let normalizedGenres = null;
     let broadGenre = null;
+    let trimmedAuthors = '';
+    let trimmedQualifications = '';
     if (role === 'reader') {
       if (Array.isArray(genres) && genres.length) {
         normalizedGenres = Array.from(new Set(genres.filter((g) => ALL_READER_GENRES.has(g))));
@@ -350,13 +353,21 @@ app.post('/api/user-profile', async (req, res) => {
       } else {
         return res.status(400).json({ error: 'Invalid genre/genres for reader' });
       }
+      trimmedAuthors = typeof favoriteAuthors === 'string' ? favoriteAuthors.trim() : '';
+      if (!trimmedAuthors) return res.status(400).json({ error: 'favoriteAuthors required' });
+      if (!READER_AGE_GROUPS.has(ageGroup)) return res.status(400).json({ error: 'Invalid ageGroup' });
+      trimmedQualifications = typeof qualifications === 'string' ? qualifications.trim() : '';
+      if (!trimmedQualifications) return res.status(400).json({ error: 'qualifications required' });
     }
     const update = { userId, email, name, role };
     if (role === 'reader') {
       update.genre = broadGenre;
       update.genres = normalizedGenres;
+      update.favoriteAuthors = trimmedAuthors;
+      update.ageGroup = ageGroup;
+      update.qualifications = trimmedQualifications;
     } else {
-      update.$unset = { genre: '', genres: '' };
+      update.$unset = { genre: '', genres: '', favoriteAuthors: '', ageGroup: '', qualifications: '' };
     }
     const profile = await UserProfile.findOneAndUpdate(
       { userId },

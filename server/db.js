@@ -23,6 +23,9 @@ const UserProfileSchema = new mongoose.Schema(
     role: { type: String, enum: ['reader', 'author'], required: true },
     genre: { type: String, enum: ['fiction', 'non_fiction'] }, // readers only — broad category derived from genres
     genres: { type: [String], default: undefined }, // readers only — subgenres
+    favoriteAuthors: { type: String, trim: true }, // readers only — authors/books they read
+    ageGroup: { type: String, enum: ['kids', 'preteens_13', 'teenager_18', 'adults_25'] }, // readers only
+    qualifications: { type: String, trim: true }, // readers only — qualifications or what they're studying
   },
   { timestamps: true }
 );

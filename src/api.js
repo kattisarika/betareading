@@ -112,11 +112,11 @@ export async function getUserProfile(userId) {
   return res.json();
 }
 
-export async function saveUserProfile({ userId, email, name, role, genre, genres }) {
+export async function saveUserProfile({ userId, email, name, role, genre, genres, favoriteAuthors, ageGroup, qualifications }) {
   const res = await fetch(`${API_BASE}/api/user-profile`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, email, name, role, genre, genres }),
+    body: JSON.stringify({ userId, email, name, role, genre, genres, favoriteAuthors, ageGroup, qualifications }),
   });
   if (!res.ok) throw new Error((await res.json()).error || 'Failed to save profile');
   return res.json();
