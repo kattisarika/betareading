@@ -55,6 +55,7 @@ body {
   position: relative;
   z-index: 1;
   padding: 0 clamp(90px, 7vw, 130px);
+  background: linear-gradient(180deg, #ffffff 0%, #3D1F0A 50%, #fff8f0 100%);
 }
 
 .bookshelf {
