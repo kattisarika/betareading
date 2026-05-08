@@ -54,14 +54,14 @@ body {
 .landing-container {
   position: relative;
   z-index: 1;
-  padding: 0 clamp(140px, 12vw, 200px);
+  padding: 0 clamp(90px, 7vw, 130px);
 }
 
 .bookshelf {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: clamp(110px, 10vw, 160px);
+  width: clamp(70px, 6vw, 100px);
   pointer-events: none;
   z-index: 0;
   filter: drop-shadow(0 6px 16px rgba(46, 25, 10, 0.35));
