@@ -105,11 +105,11 @@ body {
   font-style: normal;
   letter-spacing: 0;
   margin: 0 0 12px;
-  color: #f6b849;
+  color: #3D1F0A;
   background: none;
   -webkit-background-clip: initial;
   background-clip: initial;
-  -webkit-text-fill-color: #f6b849;
+  -webkit-text-fill-color: #3D1F0A;
 }
 
 .brand-tagline {
@@ -126,8 +126,8 @@ body {
   background: none;
   -webkit-background-clip: initial;
   background-clip: initial;
-  -webkit-text-fill-color: #f6b849;
-  color: #f6b849;
+  -webkit-text-fill-color: #3D1F0A;
+  color: #3D1F0A;
 }
 
 .role-grid {
