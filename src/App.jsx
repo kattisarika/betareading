@@ -19,6 +19,89 @@ const AUTHOR_TABS = [
   { id: 'upload', label: 'Upload Book', icon: '⬆️' },
 ];
 
+function Bookshelf() {
+  const sections = [
+    [
+      { x: 14, w: 11, h: 175, c: 1 }, { x: 26, w: 13, h: 188, c: 4 },
+      { x: 40, w: 10, h: 170, c: 5 }, { x: 51, w: 12, h: 182, c: 2 },
+      { x: 64, w: 11, h: 168, c: 3 }, { x: 76, w: 13, h: 185, c: 1 },
+      { x: 90, w: 8,  h: 165, c: 4 },
+    ],
+    [
+      { x: 14, w: 12, h: 180, c: 5 }, { x: 27, w: 10, h: 168, c: 3 },
+      { x: 38, w: 13, h: 188, c: 2 }, { x: 52, w: 11, h: 175, c: 1 },
+      { x: 64, w: 12, h: 184, c: 4 }, { x: 77, w: 10, h: 170, c: 5 },
+      { x: 88, w: 10, h: 178, c: 2 },
+    ],
+    [
+      { x: 14, w: 13, h: 186, c: 3 }, { x: 28, w: 11, h: 174, c: 1 },
+      { x: 40, w: 12, h: 182, c: 4 }, { x: 53, w: 10, h: 168, c: 5 },
+      { x: 64, w: 13, h: 188, c: 2 }, { x: 78, w: 11, h: 176, c: 3 },
+      { x: 90, w: 8,  h: 165, c: 1 },
+    ],
+    [
+      { x: 14, w: 11, h: 172, c: 2 }, { x: 26, w: 13, h: 188, c: 5 },
+      { x: 40, w: 10, h: 168, c: 1 }, { x: 51, w: 12, h: 184, c: 3 },
+      { x: 64, w: 11, h: 174, c: 4 }, { x: 76, w: 13, h: 186, c: 2 },
+      { x: 90, w: 8,  h: 168, c: 5 },
+    ],
+    [
+      { x: 14, w: 12, h: 178, c: 4 }, { x: 27, w: 10, h: 170, c: 2 },
+      { x: 38, w: 13, h: 186, c: 1 }, { x: 52, w: 11, h: 174, c: 5 },
+      { x: 64, w: 12, h: 184, c: 3 }, { x: 77, w: 11, h: 178, c: 4 },
+      { x: 89, w: 9,  h: 168, c: 1 },
+    ],
+  ];
+  const planks = [200, 400, 600, 800, 1000];
+  return (
+    <svg viewBox="0 0 110 1000" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="wood-frame" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#3D1F0A" />
+          <stop offset="50%" stopColor="#7A4A1F" />
+          <stop offset="100%" stopColor="#3D1F0A" />
+        </linearGradient>
+        <linearGradient id="wood-plank" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#7A4A1F" />
+          <stop offset="100%" stopColor="#3D1F0A" />
+        </linearGradient>
+        <linearGradient id="sb1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#A82020" /><stop offset="100%" stopColor="#651014" />
+        </linearGradient>
+        <linearGradient id="sb2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#F39C2F" /><stop offset="100%" stopColor="#B8650F" />
+        </linearGradient>
+        <linearGradient id="sb3" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#33ABE0" /><stop offset="100%" stopColor="#007C92" />
+        </linearGradient>
+        <linearGradient id="sb4" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#7DB397" /><stop offset="100%" stopColor="#175E54" />
+        </linearGradient>
+        <linearGradient id="sb5" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#C28432" /><stop offset="100%" stopColor="#5E3032" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="110" height="1000" fill="url(#wood-frame)" />
+      <rect x="0" y="0" width="14" height="1000" fill="#3D1F0A" />
+      <rect x="96" y="0" width="14" height="1000" fill="#3D1F0A" />
+      <rect x="0" y="0" width="110" height="12" fill="#5E3014" />
+      {planks.map((y, i) => (
+        <g key={`p${i}`}>
+          <rect x="0" y={y} width="110" height="9" fill="url(#wood-plank)" />
+          <rect x="0" y={y + 9} width="110" height="2" fill="rgba(0,0,0,0.35)" />
+        </g>
+      ))}
+      {sections.map((books, i) => (
+        <g key={`s${i}`} transform={`translate(0 ${planks[i]})`}>
+          {books.map((b, j) => (
+            <rect key={j} x={b.x} y={-b.h} width={b.w} height={b.h} rx="1.5" fill={`url(#sb${b.c})`} />
+          ))}
+        </g>
+      ))}
+    </svg>
+  );
+}
+
 function AuthorTabPanel({ tab, user, refreshKey, onUploaded, onFindBetaReader, onRead, readingBook, onCloseReader }) {
   if (tab === 'books') return <MyBooks user={user} refreshKey={refreshKey} onFindBetaReader={onFindBetaReader} onRead={onRead} />;
   if (tab === 'reader') return <AuthorReader book={readingBook} onClose={onCloseReader} />;
@@ -139,8 +222,14 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
-      <div className="container">
+    <div className="app-shell landing-shell">
+      <aside className="bookshelf bookshelf-left" aria-hidden="true">
+        <Bookshelf />
+      </aside>
+      <aside className="bookshelf bookshelf-right" aria-hidden="true">
+        <Bookshelf />
+      </aside>
+      <div className="container landing-container">
         <div className="hero-art" aria-hidden="true">
           <svg viewBox="0 0 1440 300" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -238,6 +327,37 @@ export default function App() {
             </div>
           ))}
         </div>
+        <footer className="landing-footer">
+          <div className="footer-inner">
+            <div className="footer-brand">
+              <span className="footer-logo">📚 Book Club</span>
+              <p className="footer-tag">Voice-enabled reading for every story.</p>
+            </div>
+            <div className="footer-cols">
+              <div className="footer-col">
+                <h4>Product</h4>
+                <a href="#authors">For Authors</a>
+                <a href="#readers">For Readers</a>
+                <a href="#voice">Voice Reader</a>
+              </div>
+              <div className="footer-col">
+                <h4>Company</h4>
+                <a href="#about">About</a>
+                <a href="#contact">Contact</a>
+                <a href="#privacy">Privacy</a>
+              </div>
+              <div className="footer-col">
+                <h4>Connect</h4>
+                <a href="#twitter">Twitter</a>
+                <a href="#instagram">Instagram</a>
+                <a href="#github">GitHub</a>
+              </div>
+            </div>
+          </div>
+          <div className="footer-bottom">
+            © {new Date().getFullYear()} Book Club · Made with <span aria-hidden="true">❤️</span> for readers everywhere.
+          </div>
+        </footer>
       </div>
     </div>
   );
