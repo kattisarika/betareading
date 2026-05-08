@@ -104,7 +104,7 @@ body {
   font-weight: 700;
   letter-spacing: -0.01em;
   margin: 0 0 12px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  background: linear-gradient(135deg, #3D1F0A 0%, #7A4A1F 50%, #3D1F0A 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -118,7 +118,7 @@ body {
 
 .brand-tagline-accent {
   font-weight: 600;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  background: linear-gradient(135deg, #3D1F0A 0%, #7A4A1F 50%, #3D1F0A 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
