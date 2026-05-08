@@ -99,15 +99,17 @@ body {
 }
 
 .brand-title {
-  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  font-family: 'Amaranth', 'Source Serif 4', Georgia, 'Times New Roman', serif;
   font-size: clamp(2rem, 5vw, 3.25rem);
   font-weight: 700;
-  letter-spacing: -0.01em;
+  font-style: normal;
+  letter-spacing: 0;
   margin: 0 0 12px;
-  background: linear-gradient(135deg, #3D1F0A 0%, #7A4A1F 50%, #3D1F0A 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #f6b849;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: #f6b849;
 }
 
 .brand-tagline {
@@ -117,12 +119,15 @@ body {
 }
 
 .brand-tagline-accent {
-  font-weight: 600;
-  background: linear-gradient(135deg, #3D1F0A 0%, #7A4A1F 50%, #3D1F0A 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  font-family: 'Amaranth', 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: 0;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: #f6b849;
+  color: #f6b849;
 }
 
 .role-grid {
