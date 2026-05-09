@@ -132,6 +132,14 @@ body {
   color: #FFFAF0;
 }
 
+.brand-community {
+  font-family: 'Amaranth', 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 700;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: #FFFAF0;
+  margin: 0 0 24px;
+}
+
 .role-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

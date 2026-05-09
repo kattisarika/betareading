@@ -317,6 +317,7 @@ export default function App() {
         <p className="brand-tagline brand-tagline-accent" style={{ marginBottom: 8 }}>
           Your one stop for any kind of book reading using voice enabled reading service.
         </p>
+        <p className="brand-community">A community where authors find trusted beta readers</p>
         <p className="brand-tagline">Choose how you'd like to begin</p>
         <div className="role-grid">
           {Object.entries(ROLES).map(([key, r]) => (
