@@ -41,6 +41,7 @@ body {
   position: relative;
   overflow-x: hidden;
   padding: 48px 0 0;
+  background: #fff8f0;
 }
 
 .container {
