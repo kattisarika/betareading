@@ -40,7 +40,7 @@ body {
 .landing-shell {
   position: relative;
   overflow-x: hidden;
-  padding: 48px 0 0;
+  padding: 0;
   background: #fff8f0;
 }
 
@@ -55,7 +55,7 @@ body {
 .landing-container {
   position: relative;
   z-index: 1;
-  padding: 0 clamp(90px, 7vw, 130px);
+  padding: 48px clamp(90px, 7vw, 130px) 0;
   background: linear-gradient(180deg, #3D1F0A 0%, #3D1F0A 50%, #fff8f0 100%);
 }
 
@@ -1150,7 +1150,7 @@ body {
     padding: 24px 4vw;
   }
   .landing-shell {
-    padding: 24px 0 0;
+    padding: 0;
   }
   .dashboard {
     padding: 28px clamp(16px, 4vw, 32px);
