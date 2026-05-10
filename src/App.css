@@ -1307,6 +1307,52 @@ body {
   color: #6b5d4a;
   margin-top: 4px;
 }
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 4px;
+  flex-wrap: wrap;
+}
+.admin-toolbar-check {
+  font-size: 0.85rem;
+  color: #3D1F0A;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.admin-search {
+  padding: 6px 10px;
+  border: 1px solid #e0d2b8;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  min-width: 240px;
+  background: #fff;
+  color: #3D1F0A;
+}
+.admin-search:focus {
+  outline: none;
+  border-color: #8C1515;
+}
+.admin-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.admin-pager select {
+  padding: 4px 6px;
+  border: 1px solid #e0d2b8;
+  border-radius: 6px;
+  background: #fff;
+  color: #3D1F0A;
+  font-size: 0.85rem;
+}
+.admin-pager-info {
+  font-size: 0.82rem;
+  color: #6b5d4a;
+}
 .admin-table-wrap {
   overflow-x: auto;
   margin-top: 8px;
@@ -1381,3 +1427,260 @@ body {
   margin-top: 16px;
   font-size: 0.9rem;
 }
+
+/* Admin: row state + actions */
+.admin-row-blocked td { background: #fff5f5 !important; opacity: 0.78; }
+.admin-actions-cell { white-space: nowrap; }
+.btn-mini {
+  display: inline-block;
+  padding: 4px 10px;
+  margin: 2px 4px 2px 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid #d8c8a8;
+  background: #fff;
+  color: #5b4a32;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-mini:hover:not(:disabled) { background: #f7eedc; }
+.btn-mini:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-mini-danger { border-color: #f0c2c2; color: #8C1515; }
+.btn-mini-danger:hover:not(:disabled) { background: #fad6da; }
+.btn-mini-ok { border-color: #b6dec0; color: #175E54; }
+.btn-mini-ok:hover:not(:disabled) { background: #d6f5d6; }
+
+/* Admin: compose-message modal */
+.admin-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(30, 20, 10, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.admin-modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px 24px 20px;
+  width: min(520px, 92vw);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.admin-modal h3 {
+  margin: 0 0 4px;
+  font-family: 'Source Serif 4', Georgia, serif;
+  color: #3D1F0A;
+}
+.admin-modal-sub { margin: 0 0 14px; color: #8a7a60; font-size: 0.85rem; }
+.admin-modal textarea {
+  width: 100%;
+  border: 1px solid #d8c8a8;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.admin-modal-error {
+  background: #fad6da;
+  color: #8C1515;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+.admin-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* User-facing admin inbox */
+.admin-inbox {
+  position: relative;
+  margin: 0 0 18px;
+}
+.admin-inbox-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #fff;
+  border: 1px solid #eadfce;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #5b4a32;
+  box-shadow: 0 2px 6px rgba(60, 30, 10, 0.06);
+}
+.admin-inbox-toggle:hover { background: #fffaf0; }
+.admin-inbox-icon { font-size: 1.1rem; }
+.admin-inbox-badge {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 7px;
+  background: #8C1515;
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+.admin-inbox-panel {
+  margin-top: 10px;
+  background: #fff;
+  border: 1px solid #eadfce;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 14px rgba(60, 30, 10, 0.08);
+  max-width: 640px;
+}
+.admin-inbox-header {
+  font-weight: 700;
+  color: #3D1F0A;
+  margin-bottom: 10px;
+  font-family: 'Source Serif 4', Georgia, serif;
+}
+.admin-inbox-empty { color: #8a7a60; font-size: 0.9rem; }
+.admin-inbox-error {
+  background: #fad6da;
+  color: #8C1515;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+.admin-inbox-list { list-style: none; padding: 0; margin: 0; }
+.admin-inbox-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #f1e7d4;
+}
+.admin-inbox-item:last-child { border-bottom: none; }
+.admin-inbox-item-unread { background: #fffaf0; padding-left: 8px; padding-right: 8px; border-radius: 6px; }
+.admin-inbox-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  color: #6b5d4a;
+}
+.admin-inbox-time { font-size: 0.75rem; color: #a89881; }
+.admin-inbox-text {
+  color: #3D1F0A;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+/* Content warning modal (shown to readers before opening a flagged book) */
+.content-warning-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(30, 20, 10, 0.65);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1100;
+  padding: 20px;
+}
+.content-warning-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px 28px 22px;
+  width: min(520px, 96vw);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.4);
+  text-align: center;
+}
+.content-warning-icon { font-size: 2.4rem; line-height: 1; }
+.content-warning-title {
+  font-family: 'Source Serif 4', Georgia, serif;
+  color: #8C1515;
+  margin: 8px 0 4px;
+  font-size: 1.6rem;
+}
+.content-warning-title strong { font-weight: 800; }
+.content-warning-sub {
+  margin: 4px 0 12px;
+  color: #3D1F0A;
+  font-size: 1rem;
+}
+.content-warning-list {
+  list-style: none;
+  padding: 12px 16px;
+  margin: 0 auto 14px;
+  max-width: 360px;
+  text-align: left;
+  background: #fff5f5;
+  border: 1px solid #f0c2c2;
+  border-radius: 10px;
+}
+.content-warning-list li {
+  padding: 4px 0;
+  color: #3D1F0A;
+}
+.content-warning-list li::before {
+  content: '\u2022';
+  color: #8C1515;
+  margin-right: 8px;
+  font-weight: 700;
+}
+.content-warning-foot {
+  color: #6b5d4a;
+  font-size: 0.9rem;
+  margin: 0 0 16px;
+}
+.content-warning-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Inline notice on a book card warning that flags exist */
+.book-flag-notice {
+  margin: 6px 0 8px;
+  padding: 6px 10px;
+  background: #fff5f5;
+  border: 1px solid #f0c2c2;
+  color: #8C1515;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* Admin: content-flag badges in Books table */
+.flag-badge-list {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  max-width: 280px;
+}
+.flag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #fff5f5;
+  border: 1px solid #f0c2c2;
+  color: #8C1515;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.flag-badge:hover { background: #fad6da; }
+.flag-badge-empty { color: #8a7a60; font-size: 0.78rem; }
+.flag-excerpts {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+.flag-excerpts li {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: #fff5f5;
+  border-left: 3px solid #8C1515;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #3D1F0A;
+  line-height: 1.4;
+}
+

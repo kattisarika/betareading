@@ -6,7 +6,7 @@ dotenv.config({ path: join(__dirname, '.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { connectMongo, UserProfile, Book, Ping, Message, Review } from './db.js';
+import { connectMongo, UserProfile, Book, Ping, Message, Review, BlockedEmail, AdminMessage } from './db.js';
 import {
   S3Client,
   ListObjectsV2Command,
@@ -16,7 +16,7 @@ import {
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { generateAudioForBook } from './tts.js';
+import { generateAudioForBook, scanBookContent } from './tts.js';
 
 const TTS_AUTO = String(process.env.TTS_AUTO || 'true').toLowerCase() === 'true';
 
@@ -161,6 +161,8 @@ app.get('/api/books', async (req, res) => {
         audioChapters,
         audioStatus: b.audioStatus || 'pending',
         audioError: b.audioError || null,
+        contentFlags: b.contentFlags || null,
+        contentScanStatus: b.contentScanStatus || 'pending',
       };
     }));
     res.json({ items });
@@ -269,6 +271,8 @@ app.get('/api/books/by-genre', async (req, res) => {
         audioChapters,
         audioStatus: b.audioStatus || 'pending',
         audioError: b.audioError || null,
+        contentFlags: b.contentFlags || null,
+        contentScanStatus: b.contentScanStatus || 'pending',
       };
     }));
     res.json({ items });
@@ -341,6 +345,9 @@ app.post('/api/user-profile', async (req, res) => {
     const { userId, email, name, role, genre, genres, favoriteAuthors, ageGroup, qualifications } = req.body || {};
     if (!userId) return res.status(400).json({ error: 'userId required' });
     if (!ROLES.includes(role)) return res.status(400).json({ error: 'Invalid role' });
+    if (await isAccessRevoked({ userId, email })) {
+      return res.status(403).json({ error: 'Your access has been revoked. Contact support if you believe this is in error.' });
+    }
     let normalizedGenres = null;
     let broadGenre = null;
     let trimmedAuthors = '';
@@ -543,6 +550,24 @@ function isSuperAdminEmail(email) {
   return String(email || '').trim().toLowerCase() === SUPER_ADMIN_EMAIL_NORMALIZED;
 }
 
+async function isAccessRevoked({ userId, email } = {}) {
+  const normEmail = String(email || '').trim().toLowerCase();
+  if (normEmail && isSuperAdminEmail(normEmail)) return false;
+  if (normEmail) {
+    const blocked = await BlockedEmail.findOne({ email: normEmail }).lean();
+    if (blocked) return true;
+  }
+  if (userId) {
+    const profile = await UserProfile.findOne({ userId }).select('blocked email').lean();
+    if (profile?.blocked) return true;
+    if (profile?.email && !normEmail) {
+      const blocked = await BlockedEmail.findOne({ email: String(profile.email).trim().toLowerCase() }).lean();
+      if (blocked) return true;
+    }
+  }
+  return false;
+}
+
 async function requireSuperAdmin(req, res) {
   const adminUserId = req.query.adminUserId || req.body?.adminUserId;
   if (!adminUserId) { res.status(401).json({ error: 'adminUserId required' }); return null; }
@@ -599,10 +624,45 @@ app.get('/api/admin/books', async (req, res) => {
   try {
     if (!(await requireSuperAdmin(req, res))) return;
     const books = await Book.find({})
-      .select('userId title description genre genres authorEmail authorName audioStatus size createdAt updatedAt')
+      .select('userId title description genre genres authorEmail authorName audioStatus size createdAt updatedAt contentFlags contentScanStatus contentScanAt contentScanError')
       .sort({ createdAt: -1 })
       .lean();
     res.json({ books });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/admin/books/:bookId/rescan', async (req, res) => {
+  try {
+    if (!(await requireSuperAdmin(req, res))) return;
+    const { bookId } = req.params;
+    const result = await scanBookContent({ s3, bucket: AWS_S3_BUCKET, bookId });
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/admin/rescan-all', async (req, res) => {
+  try {
+    if (!(await requireSuperAdmin(req, res))) return;
+    const docs = await Book.find({}).select('_id').lean();
+    res.json({ ok: true, queued: docs.length });
+    // Run in background, sequentially, so we don't hammer S3 / pdf-parse.
+    (async () => {
+      let scanned = 0, failed = 0;
+      for (const d of docs) {
+        try {
+          await scanBookContent({ s3, bucket: AWS_S3_BUCKET, bookId: String(d._id) });
+          scanned += 1;
+        } catch (err) {
+          failed += 1;
+          console.warn(`Rescan failed for book ${d._id}:`, err.message);
+        }
+      }
+      console.log(`✅ Rescan-all done: ${scanned} scanned, ${failed} failed`);
+    })().catch((e) => console.error('rescan-all background error:', e.message));
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -637,6 +697,136 @@ app.get('/api/admin/reviews', async (req, res) => {
     if (!(await requireSuperAdmin(req, res))) return;
     const reviews = await Review.find({}).sort({ createdAt: -1 }).lean();
     res.json({ reviews });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Public — called right after Google sign-in to gate access
+app.post('/api/check-access', async (req, res) => {
+  try {
+    const { userId, email } = req.body || {};
+    if (!userId && !email) return res.status(400).json({ error: 'userId or email required' });
+    const blocked = await isAccessRevoked({ userId, email });
+    if (blocked) {
+      return res.status(403).json({
+        blocked: true,
+        error: 'Your access has been revoked. Contact support if you believe this is in error.',
+      });
+    }
+    res.json({ blocked: false });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/admin/users/:userId/block', async (req, res) => {
+  try {
+    const admin = await requireSuperAdmin(req, res);
+    if (!admin) return;
+    const { userId } = req.params;
+    const { reason } = req.body || {};
+    const target = await UserProfile.findOne({ userId }).lean();
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    if (isSuperAdminEmail(target.email)) {
+      return res.status(400).json({ error: 'Cannot block the super admin' });
+    }
+    const normEmail = String(target.email || '').trim().toLowerCase();
+    await UserProfile.updateOne(
+      { userId },
+      { $set: { blocked: true, blockedAt: new Date(), blockedReason: reason || '', blockedBy: admin.userId } }
+    );
+    if (normEmail) {
+      await BlockedEmail.findOneAndUpdate(
+        { email: normEmail },
+        { email: normEmail, blockedBy: admin.userId, reason: reason || '' },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/admin/users/:userId/unblock', async (req, res) => {
+  try {
+    const admin = await requireSuperAdmin(req, res);
+    if (!admin) return;
+    const { userId } = req.params;
+    const target = await UserProfile.findOne({ userId }).lean();
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    const normEmail = String(target.email || '').trim().toLowerCase();
+    await UserProfile.updateOne(
+      { userId },
+      { $set: { blocked: false }, $unset: { blockedAt: '', blockedReason: '', blockedBy: '' } }
+    );
+    if (normEmail) {
+      await BlockedEmail.deleteOne({ email: normEmail });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/admin/messages/send', async (req, res) => {
+  try {
+    const admin = await requireSuperAdmin(req, res);
+    if (!admin) return;
+    const { recipientUserId, text } = req.body || {};
+    if (!recipientUserId || !text || !String(text).trim()) {
+      return res.status(400).json({ error: 'recipientUserId and text required' });
+    }
+    const recipient = await UserProfile.findOne({ userId: recipientUserId }).lean();
+    if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
+    const msg = await AdminMessage.create({
+      adminUserId: admin.userId,
+      adminName: admin.name || 'Super Admin',
+      recipientUserId: recipient.userId,
+      recipientEmail: recipient.email,
+      recipientName: recipient.name,
+      text: String(text).trim(),
+    });
+    res.json({ message: msg });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/admin-messages', async (req, res) => {
+  try {
+    if (!(await requireSuperAdmin(req, res))) return;
+    const messages = await AdminMessage.find({}).sort({ createdAt: -1 }).limit(2000).lean();
+    res.json({ messages });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/inbox', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    const messages = await AdminMessage.find({ recipientUserId: userId })
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+    const unreadCount = messages.filter((m) => !m.readAt).length;
+    res.json({ messages, unreadCount });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/inbox/read', async (req, res) => {
+  try {
+    const { userId, messageId } = req.body || {};
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    const filter = { recipientUserId: userId, readAt: null };
+    if (messageId) filter._id = messageId;
+    await AdminMessage.updateMany(filter, { $set: { readAt: new Date() } });
+    res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

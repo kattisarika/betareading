@@ -5,7 +5,8 @@ import { MyBooks, BookReviews, UploadBook, AuthorMessages, AuthorReader } from '
 import ReaderProfile from './components/ReaderProfile';
 import FindBetaReader from './components/FindBetaReader';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
-import { saveUserProfile, getUserId, superAdminLogin } from './api';
+import AdminInbox from './components/AdminInbox';
+import { saveUserProfile, getUserId, superAdminLogin, checkAccess } from './api';
 
 const ROLES = {
   author: { label: 'Author', icon: '✍️', desc: 'Publish & narrate your stories' },
@@ -182,6 +183,7 @@ export default function App() {
   const [booksRefresh, setBooksRefresh] = useState(0);
   const [findReaderForBook, setFindReaderForBook] = useState(null);
   const [authorReadingBook, setAuthorReadingBook] = useState(null);
+  const [loginError, setLoginError] = useState('');
 
   if (isSuperAdminRoute) return <SuperAdminGate />;
 
@@ -199,6 +201,8 @@ export default function App() {
               </button>
             </div>
             <p className="welcome">Welcome, {user.name || user.email}!</p>
+
+            <AdminInbox userId={getUserId(user)} />
 
             {role === 'reader' && <ReaderProfile user={user} />}
 
@@ -252,25 +256,35 @@ export default function App() {
             <p className="auth-subtitle">Use your Google account to continue</p>
             <div className="google-wrap">
               <GoogleLogin
-                onSuccess={(credentialResponse) => {
+                onSuccess={async (credentialResponse) => {
+                  setLoginError('');
                   const profile = decodeJwt(credentialResponse.credential);
+                  if (!profile) { setLoginError('Could not decode Google credential.'); return; }
+                  const userId = getUserId(profile);
+                  try {
+                    await checkAccess({ userId, email: profile.email });
+                  } catch (e) {
+                    setLoginError(e.message || 'Access check failed.');
+                    return;
+                  }
                   setUser(profile);
-                  if (role === 'author' && profile) {
+                  if (role === 'author') {
                     saveUserProfile({
-                      userId: getUserId(profile),
+                      userId,
                       email: profile.email,
                       name: profile.name,
                       role: 'author',
                     }).catch((err) => console.error('Failed to save author profile:', err.message));
                   }
                 }}
-                onError={() => console.error('Google Login Failed')}
+                onError={() => setLoginError('Google sign-in failed.')}
                 shape="pill"
                 theme="outline"
                 size="large"
               />
             </div>
-            <button className="btn-ghost" onClick={() => setRole(null)}>
+            {loginError && <div className="superadmin-error">{loginError}</div>}
+            <button className="btn-ghost" onClick={() => { setRole(null); setLoginError(''); }}>
               ← Back
             </button>
           </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import { listBooks, deleteBook, presignUpload, uploadToS3, saveBook, listReviews, getUserId } from '../api';
+import { listBooks, deleteBook, presignUpload, uploadToS3, saveBook, listReviews, getUserId, flagCategoryList } from '../api';
 import ChatPanel from './ChatPanel';
+import ContentWarning from './ContentWarning';
 
 const GENRES = [
   { value: 'fiction', label: 'Fiction' },
@@ -57,6 +58,12 @@ export function MyBooks({ user, refreshKey, onFindBetaReader, onRead }) {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [warnBook, setWarnBook] = useState(null);
+
+  const handleView = (b) => {
+    if (flagCategoryList(b.contentFlags).length > 0) { setWarnBook(b); return; }
+    onRead?.(b);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -108,11 +115,16 @@ export function MyBooks({ user, refreshKey, onFindBetaReader, onRead }) {
                   {b.size ? `${(b.size / 1024).toFixed(1)} KB · ` : ''}
                   {new Date(b.updated).toLocaleString()}
                 </small>
+                {flagCategoryList(b.contentFlags).length > 0 && (
+                  <div className="book-flag-notice">
+                    ⚠️ Content scan flagged: {flagCategoryList(b.contentFlags).map((f) => f.label).join(', ')}
+                  </div>
+                )}
               </div>
               <div className="book-actions">
                 <button
                   className="btn-ghost"
-                  onClick={() => onRead?.(b)}
+                  onClick={() => handleView(b)}
                   disabled={!b.viewUrl}
                 >
                   View
@@ -125,6 +137,13 @@ export function MyBooks({ user, refreshKey, onFindBetaReader, onRead }) {
             </li>
           ))}
         </ul>
+      )}
+      {warnBook && (
+        <ContentWarning
+          book={warnBook}
+          onContinue={() => { const b = warnBook; setWarnBook(null); onRead?.(b); }}
+          onCancel={() => setWarnBook(null)}
+        />
       )}
     </div>
   );

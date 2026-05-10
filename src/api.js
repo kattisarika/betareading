@@ -166,6 +166,16 @@ async function adminGet(path, adminUserId, extraParams = {}) {
   return res.json();
 }
 
+async function adminPost(path, adminUserId, body = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ adminUserId, ...body }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Request failed');
+  return res.json();
+}
+
 export const adminApi = {
   users: (adminUserId) => adminGet('/api/admin/users', adminUserId),
   books: (adminUserId) => adminGet('/api/admin/books', adminUserId),
@@ -173,5 +183,61 @@ export const adminApi = {
   messages: (adminUserId, params = {}) => adminGet('/api/admin/messages', adminUserId, params),
   reviews: (adminUserId) => adminGet('/api/admin/reviews', adminUserId),
   stats: (adminUserId) => adminGet('/api/admin/stats', adminUserId),
+  adminMessages: (adminUserId) => adminGet('/api/admin/admin-messages', adminUserId),
+  blockUser: (adminUserId, userId, reason = '') =>
+    adminPost(`/api/admin/users/${encodeURIComponent(userId)}/block`, adminUserId, { reason }),
+  unblockUser: (adminUserId, userId) =>
+    adminPost(`/api/admin/users/${encodeURIComponent(userId)}/unblock`, adminUserId),
+  sendMessage: (adminUserId, recipientUserId, text) =>
+    adminPost('/api/admin/messages/send', adminUserId, { recipientUserId, text }),
+  rescanBook: (adminUserId, bookId) =>
+    adminPost(`/api/admin/books/${encodeURIComponent(bookId)}/rescan`, adminUserId),
+  rescanAll: (adminUserId) =>
+    adminPost('/api/admin/rescan-all', adminUserId),
 };
+
+export function flagCategoryList(contentFlags) {
+  if (!contentFlags || typeof contentFlags !== 'object') return [];
+  return Object.entries(contentFlags)
+    .map(([key, v]) => ({
+      key,
+      label: v?.label || key,
+      count: Number(v?.count) || 0,
+      excerpts: Array.isArray(v?.excerpts) ? v.excerpts : [],
+    }))
+    .filter((f) => f.count > 0)
+    .sort((a, b) => b.count - a.count);
+}
+
+export async function checkAccess({ userId, email }) {
+  const res = await fetch(`${API_BASE}/api/check-access`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, email }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 403 && data?.blocked) {
+    const err = new Error(data.error || 'Your access has been revoked.');
+    err.blocked = true;
+    throw err;
+  }
+  if (!res.ok) throw new Error(data?.error || 'Access check failed');
+  return data;
+}
+
+export async function getInbox(userId) {
+  const res = await fetch(`${API_BASE}/api/inbox?userId=${encodeURIComponent(userId)}`);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load inbox');
+  return res.json();
+}
+
+export async function markInboxRead(userId, messageId) {
+  const res = await fetch(`${API_BASE}/api/inbox/read`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, messageId }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to mark read');
+  return res.json();
+}
 

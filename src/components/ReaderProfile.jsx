@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { getUserProfile, saveUserProfile, listBooksByGenre, listReviews, submitReview, generateBookAudio, getUserId } from '../api';
+import { getUserProfile, saveUserProfile, listBooksByGenre, listReviews, submitReview, generateBookAudio, getUserId, flagCategoryList } from '../api';
 import ChatPanel from './ChatPanel';
+import ContentWarning from './ContentWarning';
 
 const FICTION_SUBGENRES = [
   { value: 'action', label: 'Action' },
@@ -131,6 +132,8 @@ function BookItem({ user, book, existingReview, onReviewSaved, onRefresh, onRead
   const [playerOpen, setPlayerOpen] = useState(false);
   const [triggering, setTriggering] = useState(false);
   const [activeChapter, setActiveChapter] = useState(0);
+  const [pendingAction, setPendingAction] = useState(null);
+  const hasFlags = flagCategoryList(book.contentFlags).length > 0;
   const status = book.audioStatus || 'pending';
   const chapters = Array.isArray(book.audioChapters) && book.audioChapters.length
     ? book.audioChapters
@@ -201,7 +204,7 @@ function BookItem({ user, book, existingReview, onReviewSaved, onRefresh, onRead
     saveBookmark(i, 0);
   };
 
-  const handleListen = async () => {
+  const startListen = async () => {
     if (status === 'ready') { setPlayerOpen((v) => !v); return; }
     if (status === 'processing') return;
     try {
@@ -213,6 +216,22 @@ function BookItem({ user, book, existingReview, onReviewSaved, onRefresh, onRead
     } finally {
       setTriggering(false);
     }
+  };
+
+  const handleRead = () => {
+    if (hasFlags) { setPendingAction('read'); return; }
+    onRead?.(book);
+  };
+  const handleListen = () => {
+    if (hasFlags && status !== 'ready') { setPendingAction('listen'); return; }
+    if (hasFlags && status === 'ready' && !playerOpen) { setPendingAction('listen'); return; }
+    startListen();
+  };
+  const confirmPending = () => {
+    const action = pendingAction;
+    setPendingAction(null);
+    if (action === 'read') onRead?.(book);
+    else if (action === 'listen') startListen();
   };
 
   let listenLabel = '🎧 Listen';
@@ -238,10 +257,15 @@ function BookItem({ user, book, existingReview, onReviewSaved, onRefresh, onRead
           </div>
         )}
       </div>
+      {hasFlags && (
+        <div className="book-flag-notice">
+          ⚠️ This book contains sensitive content. A warning will appear before you open it.
+        </div>
+      )}
       <div className="book-actions">
         <button
           className="btn-primary btn-sm"
-          onClick={() => onRead?.(book)}
+          onClick={handleRead}
           disabled={!book.viewUrl}
         >
           📖 Read
@@ -305,6 +329,13 @@ function BookItem({ user, book, existingReview, onReviewSaved, onRefresh, onRead
           />
         </div>
       )}
+      {pendingAction && (
+        <ContentWarning
+          book={book}
+          onContinue={confirmPending}
+          onCancel={() => setPendingAction(null)}
+        />
+      )}
     </li>
   );
 }
@@ -314,6 +345,9 @@ function ReaderBooks({ user, broadGenres, onRead }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [reviewsByBook, setReviewsByBook] = useState({});
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -347,6 +381,20 @@ function ReaderBooks({ user, broadGenres, onRead }) {
 
   const heading = broadGenres.map(genreLabel).join(' & ');
 
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? books.filter((b) =>
+        (b.title || '').toLowerCase().includes(q) ||
+        (b.authorName || '').toLowerCase().includes(q) ||
+        (b.description || '').toLowerCase().includes(q)
+      )
+    : books;
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+  const pageRows = filtered.slice(start, start + pageSize);
+
   return (
     <div className="reader-books">
       <h3>View Books</h3>
@@ -359,19 +407,62 @@ function ReaderBooks({ user, broadGenres, onRead }) {
         <div className="empty-state">No {heading} books yet — check back soon!</div>
       )}
       {!loading && books.length > 0 && (
-        <ul className="book-list">
-          {books.map((b) => (
-            <BookItem
-              key={b.key}
-              user={user}
-              book={b}
-              existingReview={reviewsByBook[b.id || b.key]}
-              onReviewSaved={(rev) => setReviewsByBook((prev) => ({ ...prev, [rev.bookId]: rev }))}
-              onRefresh={load}
-              onRead={onRead}
+        <>
+          <div className="admin-toolbar">
+            <input
+              type="search"
+              className="admin-search"
+              placeholder="Search by title, author, or description…"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
-          ))}
-        </ul>
+            <div className="admin-pager">
+              <label className="admin-toolbar-check">
+                Books per page:{' '}
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+              </label>
+              <span className="admin-pager-info">
+                {total === 0 ? '0 of 0' : `${start + 1}–${Math.min(start + pageSize, total)} of ${total}`}
+              </span>
+              <button
+                className="btn-mini"
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >‹ Prev</button>
+              <span className="admin-pager-info">Page {safePage} / {totalPages}</span>
+              <button
+                className="btn-mini"
+                disabled={safePage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              >Next ›</button>
+            </div>
+          </div>
+          {pageRows.length === 0 ? (
+            <div className="empty-state">No books match "{search}".</div>
+          ) : (
+            <ul className="book-list">
+              {pageRows.map((b) => (
+                <BookItem
+                  key={b.key}
+                  user={user}
+                  book={b}
+                  existingReview={reviewsByBook[b.id || b.key]}
+                  onReviewSaved={(rev) => setReviewsByBook((prev) => ({ ...prev, [rev.bookId]: rev }))}
+                  onRefresh={load}
+                  onRead={onRead}
+                />
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </div>
   );

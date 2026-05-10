@@ -2,6 +2,7 @@ import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { PollyClient, SynthesizeSpeechCommand } from '@aws-sdk/client-polly';
 import { PDFParse } from 'pdf-parse';
 import { Book } from './db.js';
+import { scanText } from './contentScan.js';
 
 const POLLY_VOICE = process.env.POLLY_VOICE || 'Joanna';
 const POLLY_ENGINE = process.env.POLLY_ENGINE || 'neural';
@@ -110,6 +111,21 @@ export async function generateAudioForBook({ s3, bucket, region, bookId }) {
     await parser.destroy().catch(() => {});
     const text = (parsed?.text || '').trim();
     if (!text) throw new Error('No extractable text in PDF');
+
+    try {
+      const { flags } = scanText(text);
+      await Book.updateOne(
+        { _id: bookId },
+        { $set: { contentFlags: flags, contentScanStatus: 'scanned', contentScanAt: new Date(), contentScanError: null } }
+      );
+    } catch (scanErr) {
+      console.warn(`Content scan failed for book ${bookId}:`, scanErr.message);
+      await Book.updateOne(
+        { _id: bookId },
+        { $set: { contentScanStatus: 'failed', contentScanError: scanErr.message } }
+      );
+    }
+
     if (text.length > TTS_MAX_CHARS) {
       throw new Error(`Text length ${text.length} exceeds TTS_MAX_CHARS=${TTS_MAX_CHARS}`);
     }
@@ -151,3 +167,29 @@ export async function generateAudioForBook({ s3, bucket, region, bookId }) {
     throw err;
   }
 }
+
+export async function scanBookContent({ s3, bucket, bookId }) {
+  const book = await Book.findById(bookId);
+  if (!book) throw new Error(`Book ${bookId} not found`);
+  try {
+    const pdfObj = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: book.s3Key }));
+    const pdfBuffer = await streamToBuffer(pdfObj.Body);
+    const parser = new PDFParse({ data: pdfBuffer });
+    const parsed = await parser.getText();
+    await parser.destroy().catch(() => {});
+    const text = (parsed?.text || '').trim();
+    const { flags } = scanText(text);
+    await Book.updateOne(
+      { _id: bookId },
+      { $set: { contentFlags: flags, contentScanStatus: 'scanned', contentScanAt: new Date(), contentScanError: null } }
+    );
+    return { bookId, flags, chars: text.length };
+  } catch (err) {
+    await Book.updateOne(
+      { _id: bookId },
+      { $set: { contentScanStatus: 'failed', contentScanError: err.message } }
+    );
+    throw err;
+  }
+}
+

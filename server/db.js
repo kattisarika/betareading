@@ -26,6 +26,10 @@ const UserProfileSchema = new mongoose.Schema(
     favoriteAuthors: { type: String, trim: true }, // readers only — authors/books they read
     ageGroup: { type: String, enum: ['kids', 'preteens_13', 'teenager_18', 'adults_25'] }, // readers only
     qualifications: { type: String, trim: true }, // readers only — qualifications or what they're studying
+    blocked: { type: Boolean, default: false, index: true },
+    blockedAt: { type: Date },
+    blockedReason: { type: String, trim: true },
+    blockedBy: { type: String }, // super admin userId
   },
   { timestamps: true }
 );
@@ -58,6 +62,10 @@ const BookSchema = new mongoose.Schema(
       }],
       default: undefined,
     },
+    contentScanStatus: { type: String, enum: ['pending', 'scanned', 'failed'], default: 'pending' },
+    contentScanAt: { type: Date },
+    contentScanError: { type: String },
+    contentFlags: { type: mongoose.Schema.Types.Mixed, default: undefined },
   },
   { timestamps: true }
 );
@@ -120,3 +128,32 @@ const ReviewSchema = new mongoose.Schema(
 ReviewSchema.index({ bookId: 1, reviewerUserId: 1 }, { unique: true });
 
 export const Review = mongoose.models.Review || mongoose.model('Review', ReviewSchema);
+
+
+const BlockedEmailSchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
+    blockedBy: { type: String }, // super admin userId
+    reason: { type: String, trim: true },
+  },
+  { timestamps: true }
+);
+
+export const BlockedEmail =
+  mongoose.models.BlockedEmail || mongoose.model('BlockedEmail', BlockedEmailSchema);
+
+const AdminMessageSchema = new mongoose.Schema(
+  {
+    adminUserId: { type: String, required: true },
+    adminName: { type: String },
+    recipientUserId: { type: String, required: true, index: true },
+    recipientEmail: { type: String, lowercase: true, trim: true },
+    recipientName: { type: String },
+    text: { type: String, required: true, trim: true },
+    readAt: { type: Date, default: null },
+  },
+  { timestamps: true }
+);
+
+export const AdminMessage =
+  mongoose.models.AdminMessage || mongoose.model('AdminMessage', AdminMessageSchema);
