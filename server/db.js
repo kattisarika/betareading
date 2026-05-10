@@ -20,7 +20,7 @@ const UserProfileSchema = new mongoose.Schema(
     userId: { type: String, required: true, unique: true, index: true },
     email: { type: String },
     name: { type: String },
-    role: { type: String, enum: ['reader', 'author'], required: true },
+    role: { type: String, enum: ['reader', 'author', 'super_admin'], required: true },
     genre: { type: String, enum: ['fiction', 'non_fiction'] }, // readers only — broad category derived from genres
     genres: { type: [String], default: undefined }, // readers only — subgenres
     favoriteAuthors: { type: String, trim: true }, // readers only — authors/books they read

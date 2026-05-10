@@ -28,7 +28,10 @@ const {
   AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY,
   MONGODB_URI,
+  SUPER_ADMIN_EMAIL = '',
 } = process.env;
+
+const SUPER_ADMIN_EMAIL_NORMALIZED = SUPER_ADMIN_EMAIL.trim().toLowerCase();
 
 if (MONGODB_URI) {
   connectMongo(MONGODB_URI).catch((e) => console.error('Mongo connect error:', e.message));
@@ -533,6 +536,133 @@ app.post('/api/reviews', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// 8. Super admin — single account gated by SUPER_ADMIN_EMAIL env var
+function isSuperAdminEmail(email) {
+  if (!SUPER_ADMIN_EMAIL_NORMALIZED) return false;
+  return String(email || '').trim().toLowerCase() === SUPER_ADMIN_EMAIL_NORMALIZED;
+}
+
+async function requireSuperAdmin(req, res) {
+  const adminUserId = req.query.adminUserId || req.body?.adminUserId;
+  if (!adminUserId) { res.status(401).json({ error: 'adminUserId required' }); return null; }
+  const profile = await UserProfile.findOne({ userId: adminUserId }).lean();
+  if (!profile || profile.role !== 'super_admin') {
+    res.status(403).json({ error: 'Forbidden' });
+    return null;
+  }
+  if (!isSuperAdminEmail(profile.email)) {
+    res.status(403).json({ error: 'Forbidden' });
+    return null;
+  }
+  return profile;
+}
+
+app.post('/api/super-admin-login', async (req, res) => {
+  try {
+    const { userId, email, name } = req.body || {};
+    if (!userId || !email) return res.status(400).json({ error: 'userId and email required' });
+    if (!SUPER_ADMIN_EMAIL_NORMALIZED) {
+      return res.status(403).json({ error: 'Super admin not configured on this server' });
+    }
+    if (!isSuperAdminEmail(email)) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+    const profile = await UserProfile.findOneAndUpdate(
+      { userId },
+      {
+        userId,
+        email,
+        name,
+        role: 'super_admin',
+        $unset: { genre: '', genres: '', favoriteAuthors: '', ageGroup: '', qualifications: '' },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    res.json({ profile });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    if (!(await requireSuperAdmin(req, res))) return;
+    const users = await UserProfile.find({}).sort({ createdAt: -1 }).lean();
+    res.json({ users });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/books', async (req, res) => {
+  try {
+    if (!(await requireSuperAdmin(req, res))) return;
+    const books = await Book.find({})
+      .select('userId title description genre genres authorEmail authorName audioStatus size createdAt updatedAt')
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ books });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/pings', async (req, res) => {
+  try {
+    if (!(await requireSuperAdmin(req, res))) return;
+    const pings = await Ping.find({}).sort({ createdAt: -1 }).lean();
+    res.json({ pings });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/messages', async (req, res) => {
+  try {
+    if (!(await requireSuperAdmin(req, res))) return;
+    const { bookId, userId } = req.query;
+    const query = {};
+    if (bookId) query.bookId = bookId;
+    if (userId) query.$or = [{ authorUserId: userId }, { readerUserId: userId }, { fromUserId: userId }];
+    const messages = await Message.find(query).sort({ createdAt: -1 }).limit(2000).lean();
+    res.json({ messages });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/reviews', async (req, res) => {
+  try {
+    if (!(await requireSuperAdmin(req, res))) return;
+    const reviews = await Review.find({}).sort({ createdAt: -1 }).lean();
+    res.json({ reviews });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    if (!(await requireSuperAdmin(req, res))) return;
+    const [totalUsers, totalAuthors, totalReaders, totalBooks, totalPings, totalMessages, totalReviews] = await Promise.all([
+      UserProfile.countDocuments({}),
+      UserProfile.countDocuments({ role: 'author' }),
+      UserProfile.countDocuments({ role: 'reader' }),
+      Book.countDocuments({}),
+      Ping.countDocuments({}),
+      Message.countDocuments({}),
+      Review.countDocuments({}),
+    ]);
+    res.json({
+      totalUsers, totalAuthors, totalReaders,
+      totalBooks, totalPings, totalMessages, totalReviews,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 
 if (process.env.NODE_ENV === 'production') {
   const distDir = join(__dirname, '..', 'dist');

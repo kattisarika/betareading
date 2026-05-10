@@ -148,3 +148,30 @@ export function uploadToS3(url, file, onProgress) {
     xhr.send(file);
   });
 }
+
+export async function superAdminLogin({ userId, email, name }) {
+  const res = await fetch(`${API_BASE}/api/super-admin-login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, email, name }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Not authorized');
+  return res.json();
+}
+
+async function adminGet(path, adminUserId, extraParams = {}) {
+  const params = new URLSearchParams({ adminUserId, ...extraParams });
+  const res = await fetch(`${API_BASE}${path}?${params.toString()}`);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Request failed');
+  return res.json();
+}
+
+export const adminApi = {
+  users: (adminUserId) => adminGet('/api/admin/users', adminUserId),
+  books: (adminUserId) => adminGet('/api/admin/books', adminUserId),
+  pings: (adminUserId) => adminGet('/api/admin/pings', adminUserId),
+  messages: (adminUserId, params = {}) => adminGet('/api/admin/messages', adminUserId, params),
+  reviews: (adminUserId) => adminGet('/api/admin/reviews', adminUserId),
+  stats: (adminUserId) => adminGet('/api/admin/stats', adminUserId),
+};
+

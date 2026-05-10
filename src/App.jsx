@@ -4,7 +4,8 @@ import './App.css';
 import { MyBooks, BookReviews, UploadBook, AuthorMessages, AuthorReader } from './components/AuthorTabs';
 import ReaderProfile from './components/ReaderProfile';
 import FindBetaReader from './components/FindBetaReader';
-import { saveUserProfile, getUserId } from './api';
+import SuperAdminDashboard from './components/SuperAdminDashboard';
+import { saveUserProfile, getUserId, superAdminLogin } from './api';
 
 const ROLES = {
   author: { label: 'Author', icon: '✍️', desc: 'Publish & narrate your stories' },
@@ -119,13 +120,70 @@ function decodeJwt(token) {
   }
 }
 
+function SuperAdminGate() {
+  const [adminUser, setAdminUser] = useState(null);
+  const [adminUserId, setAdminUserId] = useState(null);
+  const [error, setError] = useState('');
+
+  if (adminUser && adminUserId) {
+    return (
+      <SuperAdminDashboard
+        adminUser={adminUser}
+        adminUserId={adminUserId}
+        onLogout={() => { setAdminUser(null); setAdminUserId(null); window.location.assign('/'); }}
+      />
+    );
+  }
+
+  return (
+    <div className="app-shell">
+      <div className="container">
+        <div className="superadmin-card">
+          <h1>🛡️ Super Admin</h1>
+          <p>Restricted access. Sign in with the authorized Google account.</p>
+          <div className="google-wrap">
+            <GoogleLogin
+              onSuccess={async (credentialResponse) => {
+                setError('');
+                const profile = decodeJwt(credentialResponse.credential);
+                if (!profile) { setError('Could not decode Google credential.'); return; }
+                const userId = getUserId(profile);
+                try {
+                  await superAdminLogin({ userId, email: profile.email, name: profile.name });
+                  setAdminUser(profile);
+                  setAdminUserId(userId);
+                } catch (e) {
+                  setError(e.message || 'Not authorized');
+                }
+              }}
+              onError={() => setError('Google sign-in failed.')}
+              shape="pill"
+              theme="outline"
+              size="large"
+            />
+          </div>
+          {error && <div className="superadmin-error">{error}</div>}
+          <button className="btn-ghost" style={{ marginTop: 16 }} onClick={() => window.location.assign('/')}>
+            ← Back to home
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const isSuperAdminRoute =
+    typeof window !== 'undefined' && window.location.pathname.replace(/\/+$/, '') === '/superadmin';
+
   const [role, setRole] = useState(null);
   const [user, setUser] = useState(null);
   const [authorTab, setAuthorTab] = useState('books');
   const [booksRefresh, setBooksRefresh] = useState(0);
   const [findReaderForBook, setFindReaderForBook] = useState(null);
   const [authorReadingBook, setAuthorReadingBook] = useState(null);
+
+  if (isSuperAdminRoute) return <SuperAdminGate />;
 
   if (user && role) {
     return (
