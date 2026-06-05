@@ -394,11 +394,17 @@ export default function App() {
             <circle cx="1380" cy="220" r="3" fill="#0098DB" opacity="0.7" />
           </svg>
         </div>
-        <h1 className="brand-title">Welcome to Book Club</h1>
-        <p className="brand-tagline brand-tagline-accent" style={{ marginBottom: 8 }}>
-          Your one stop for any kind of book reading using voice enabled reading service.
-        </p>
-        <p className="brand-community">A platform connecting authors with beta readers</p>
+        <h1 className="brand-title">Welcome to Flipp — author engagement platform</h1>
+        <p className="brand-community landing-audience-lead">A platform connecting authors with:</p>
+        <ul className="landing-audience-list">
+          <li>Reader Communities — Book Lovers</li>
+          <li>BETA Readers</li>
+          <li>ARC Readers</li>
+          <li>Book Clubs</li>
+          <li>Author Networking</li>
+          <li>Launch Support</li>
+        </ul>
+        <p className="brand-community landing-audience-lead">Genre-based match — every author finds a reader</p>
         <p className="brand-tagline">Choose how you'd like to begin</p>
         <div className="role-grid">
           {Object.entries(ROLES).map(([key, r]) => (

@@ -22,7 +22,7 @@ html, body, #root {
 }
 
 body {
-  font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   color: var(--text);
   background: linear-gradient(135deg, #fdf6ec 0%, #faf0e0 50%, #fff8f0 100%);
   -webkit-font-smoothing: antialiased;
@@ -41,7 +41,7 @@ body {
   position: relative;
   overflow-x: hidden;
   padding: 0;
-  background: #fff8f0;
+  background: #e5e2d5;
 }
 
 .container {
@@ -56,7 +56,7 @@ body {
   position: relative;
   z-index: 1;
   padding: 48px clamp(90px, 7vw, 130px) 0;
-  background: linear-gradient(180deg, #3D1F0A 0%, #3D1F0A 50%, #fff8f0 100%);
+  background: #e5e2d5;
 }
 
 .bookshelf {
@@ -66,7 +66,7 @@ body {
   width: clamp(70px, 6vw, 100px);
   pointer-events: none;
   z-index: 0;
-  filter: drop-shadow(0 6px 16px rgba(46, 25, 10, 0.35));
+  filter: drop-shadow(0 6px 16px rgba(10, 50, 35, 0.35));
 }
 
 .bookshelf svg {
@@ -81,7 +81,7 @@ body {
 .hero-art {
   width: 100%;
   margin: 0 auto 32px;
-  filter: drop-shadow(0 14px 24px rgba(140, 21, 21, 0.18));
+  filter: drop-shadow(0 14px 24px rgba(13, 77, 61, 0.20));
   animation: hero-float 6s ease-in-out infinite;
 }
 
@@ -101,27 +101,27 @@ body {
 }
 
 .brand-title {
-  font-family: 'Amaranth', 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   font-size: 48px;
   font-weight: 700;
   font-style: normal;
   letter-spacing: 0;
   margin: 0 0 12px;
-  color: #FFFAF0;
+  color: #0d4d3d;
   background: none;
   -webkit-background-clip: initial;
   background-clip: initial;
-  -webkit-text-fill-color: #FFFAF0;
+  -webkit-text-fill-color: #0d4d3d;
 }
 
 .brand-tagline {
-  color: #FFFAF0;
+  color: #4D4F53;
   font-size: 1.05rem;
   margin: 0 0 56px;
 }
 
 .brand-tagline-accent {
-  font-family: 'Amaranth', 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   font-weight: 700;
   font-style: normal;
   font-size: 24px;
@@ -129,18 +129,47 @@ body {
   background: none;
   -webkit-background-clip: initial;
   background-clip: initial;
-  -webkit-text-fill-color: #FFFAF0;
-  color: #FFFAF0;
+  -webkit-text-fill-color: #0d4d3d;
+  color: #0d4d3d;
 }
 
 .brand-community {
-  font-family: 'Amaranth', 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   font-weight: 700;
   font-size: 48px;
-  color: #FFFAF0;
+  color: #0d4d3d;
   margin: 0 0 24px;
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.landing-audience-lead {
+  font-size: 24px;
+  text-transform: none;
+  letter-spacing: 0;
+  margin: 0 0 16px;
+}
+
+.landing-audience-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 auto 40px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 14px;
+  max-width: 720px;
+}
+
+.landing-audience-list li {
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+  font-weight: 600;
+  font-size: 2rem;
+  color: #0d4d3d;
+  background: transparent;
+  border: 1px solid rgba(13, 77, 61, 0.45);
+  padding: 8px 14px;
+  border-radius: 0;
 }
 
 .role-grid {
@@ -177,15 +206,15 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(236, 72, 153, 0.08));
+  background: linear-gradient(135deg, rgba(13, 77, 61, 0.10), rgba(196, 98, 58, 0.10));
   opacity: 0;
   transition: opacity 0.25s ease;
 }
 
 .role-card:hover {
   transform: translateY(-8px);
-  box-shadow: var(--shadow-lg);
-  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 24px 60px rgba(13, 77, 61, 0.25);
+  border-color: rgba(13, 77, 61, 0.4);
 }
 
 .role-card:hover::before {
@@ -217,8 +246,8 @@ body {
 .landing-footer {
   margin-top: 80px;
   padding: 48px clamp(16px, 4vw, 40px) 24px;
-  background: linear-gradient(180deg, rgba(94, 48, 20, 0.04) 0%, rgba(94, 48, 20, 0.10) 100%);
-  border-top: 3px solid var(--primary);
+  background: linear-gradient(180deg, rgba(13, 77, 61, 0.04) 0%, rgba(13, 77, 61, 0.10) 100%);
+  border-top: 3px solid #0d4d3d;
   border-radius: 18px 18px 0 0;
   color: var(--text);
   text-align: left;
@@ -231,7 +260,7 @@ body {
   max-width: 1100px;
   margin: 0 auto;
   padding-bottom: 32px;
-  border-bottom: 1px solid rgba(140, 21, 21, 0.18);
+  border-bottom: 1px solid rgba(13, 77, 61, 0.18);
 }
 
 .footer-brand {
@@ -241,10 +270,10 @@ body {
 }
 
 .footer-logo {
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   font-size: 1.4rem;
   font-weight: 700;
-  color: var(--primary);
+  color: #0d4d3d;
 }
 
 .footer-tag {
@@ -261,7 +290,7 @@ body {
 }
 
 .footer-col h4 {
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text);
@@ -280,7 +309,7 @@ body {
 }
 
 .footer-col a:hover {
-  color: var(--primary);
+  color: #c4623a;
 }
 
 .footer-bottom {
@@ -364,7 +393,7 @@ body {
 }
 
 .dashboard-title {
-  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   font-size: 1.75rem;
   font-weight: 700;
   margin: 0;
@@ -1300,7 +1329,7 @@ body {
   font-size: 2rem;
   font-weight: 700;
   color: #8C1515;
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
 }
 .admin-stat-label {
   font-size: 0.85rem;
@@ -1414,7 +1443,7 @@ body {
   box-shadow: 0 4px 16px rgba(60, 30, 10, 0.08);
 }
 .superadmin-card h1 {
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   color: #8C1515;
   margin: 0 0 8px;
 }
@@ -1467,7 +1496,7 @@ body {
 }
 .admin-modal h3 {
   margin: 0 0 4px;
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   color: #3D1F0A;
 }
 .admin-modal-sub { margin: 0 0 14px; color: #8a7a60; font-size: 0.85rem; }
@@ -1541,7 +1570,7 @@ body {
   font-weight: 700;
   color: #3D1F0A;
   margin-bottom: 10px;
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
 }
 .admin-inbox-empty { color: #8a7a60; font-size: 0.9rem; }
 .admin-inbox-error {
@@ -1593,7 +1622,7 @@ body {
 }
 .content-warning-icon { font-size: 2.4rem; line-height: 1; }
 .content-warning-title {
-  font-family: 'Source Serif 4', Georgia, serif;
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   color: #8C1515;
   margin: 8px 0 4px;
   font-size: 1.6rem;
