@@ -397,12 +397,9 @@ export default function App() {
         <h1 className="brand-title">Welcome to Flipp — author engagement platform</h1>
         <p className="brand-community landing-audience-lead">A platform connecting authors with:</p>
         <ul className="landing-audience-list">
-          <li>Reader Communities — Book Lovers</li>
-          <li>BETA Readers</li>
-          <li>ARC Readers</li>
+          <li>Reader Communities</li>
+          <li>Book Lovers</li>
           <li>Book Clubs</li>
-          <li>Author Networking</li>
-          <li>Launch Support</li>
         </ul>
         <p className="brand-community landing-audience-lead">Genre-based match — every author finds a reader</p>
         <p className="brand-tagline">Choose how you'd like to begin</p>
