@@ -5,6 +5,7 @@ import { MyBooks, BookReviews, UploadBook, AuthorMessages, AuthorReader } from '
 import ReaderProfile from './components/ReaderProfile';
 import FindBetaReader from './components/FindBetaReader';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
+import GroupsPanel from './components/GroupsPanel';
 import AdminInbox from './components/AdminInbox';
 import { saveUserProfile, getUserId, superAdminLogin, checkAccess } from './api';
 
@@ -18,6 +19,7 @@ const AUTHOR_TABS = [
   { id: 'reader', label: 'Read', icon: '📕' },
   { id: 'messages', label: 'Messages', icon: '💬' },
   { id: 'reviews', label: 'Book Reviews', icon: '⭐' },
+  { id: 'groups', label: 'Reader Groups', icon: '👥' },
   { id: 'upload', label: 'Upload Book', icon: '⬆️' },
 ];
 
@@ -109,6 +111,13 @@ function AuthorTabPanel({ tab, user, refreshKey, onUploaded, onFindBetaReader, o
   if (tab === 'reader') return <AuthorReader book={readingBook} onClose={onCloseReader} />;
   if (tab === 'messages') return <AuthorMessages user={user} />;
   if (tab === 'reviews') return <BookReviews user={user} />;
+  if (tab === 'groups') return (
+    <div className="tab-panel">
+      <h3>👥 Reader Groups</h3>
+      <p className="welcome">Groups for genres you've published in. Read-only — your readers connect here.</p>
+      <GroupsPanel user={user} readOnly />
+    </div>
+  );
   return <UploadBook user={user} onUploaded={onUploaded} />;
 }
 

@@ -2,66 +2,16 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { getUserProfile, saveUserProfile, listBooksByGenre, listReviews, submitReview, generateBookAudio, getUserId, flagCategoryList } from '../api';
 import ChatPanel from './ChatPanel';
 import ContentWarning from './ContentWarning';
-
-const FICTION_SUBGENRES = [
-  { value: 'action', label: 'Action' },
-  { value: 'adventure', label: 'Adventure' },
-  { value: 'drama', label: 'Drama' },
-  { value: 'erotica', label: 'Erotica' },
-  { value: 'fantasy', label: 'Fantasy' },
-  { value: 'historical_fiction', label: 'Historical Fiction' },
-  { value: 'horror', label: 'Horror' },
-  { value: 'humor', label: 'Humor' },
-  { value: 'lgbtq', label: 'LGBTQ+' },
-  { value: 'literary_fiction', label: 'Literary Fiction' },
-  { value: 'mystery', label: 'Mystery' },
-  { value: 'other', label: 'Other' },
-  { value: 'poetry', label: 'Poetry' },
-  { value: 'romance', label: 'Romance' },
-  { value: 'scifi', label: 'Sci-Fi' },
-  { value: 'thriller', label: 'Thriller' },
-  { value: 'young_adult', label: 'Young Adult' },
-  { value: 'kids', label: 'Kids Books' },
-];
-
-const NON_FICTION_SUBGENRES = [
-  { value: 'memoir', label: 'Memoir' },
-  { value: 'biography', label: 'Biography' },
-  { value: 'self_help', label: 'Self-Help' },
-  { value: 'history', label: 'History' },
-  { value: 'science', label: 'Science' },
-  { value: 'business', label: 'Business' },
-  { value: 'cooking', label: 'Cooking' },
-  { value: 'travel', label: 'Travel' },
-];
-
-const AGE_GROUPS = [
-  { value: 'kids', label: 'Kids' },
-  { value: 'preteens_13', label: 'Preteens 13+' },
-  { value: 'teenager_18', label: 'Teenager 18+' },
-  { value: 'adults_25', label: 'Adults 25+' },
-];
-
-const FICTION_SUBGENRE_VALUES = new Set(FICTION_SUBGENRES.map((g) => g.value));
-const NON_FICTION_SUBGENRE_VALUES = new Set(NON_FICTION_SUBGENRES.map((g) => g.value));
-
-const ALL_GENRE_LABELS = {
-  fiction: 'Fiction',
-  non_fiction: 'Non-Fiction',
-  ...Object.fromEntries(FICTION_SUBGENRES.map((g) => [g.value, g.label])),
-  ...Object.fromEntries(NON_FICTION_SUBGENRES.map((g) => [g.value, g.label])),
-};
-
-const genreLabel = (v) => ALL_GENRE_LABELS[v] || v;
-
-function deriveBroadGenres(genres = []) {
-  const broad = new Set();
-  for (const g of genres) {
-    if (g === 'non_fiction' || NON_FICTION_SUBGENRE_VALUES.has(g)) broad.add('non_fiction');
-    else if (FICTION_SUBGENRE_VALUES.has(g) || g === 'fiction') broad.add('fiction');
-  }
-  return Array.from(broad);
-}
+import GroupsPanel from './GroupsPanel';
+import GroupChatRoom from './GroupChatRoom';
+import {
+  FICTION_SUBGENRES,
+  NON_FICTION_SUBGENRES,
+  AGE_GROUPS,
+  ALL_GENRE_LABELS,
+  genreLabel,
+  deriveBroadGenres,
+} from '../constants/genres';
 
 function ReviewForm({ user, book, existing, onSaved }) {
   const [rating, setRating] = useState(existing?.rating || 0);
@@ -473,6 +423,7 @@ const READER_TABS = [
   { id: 'reviews', label: 'Book Reviews', icon: '⭐' },
   { id: 'messages', label: 'Messages', icon: '💬' },
   { id: 'reader', label: 'Read', icon: '📕' },
+  { id: 'groups', label: 'Groups', icon: '👥' },
   { id: 'profile', label: 'Profile', icon: '👤' },
 ];
 
@@ -698,6 +649,7 @@ export default function ReaderProfile({ user }) {
   const [savedProfile, setSavedProfile] = useState(null);
   const [tab, setTab] = useState('books');
   const [readingBook, setReadingBook] = useState(null);
+  const [openGroupGenre, setOpenGroupGenre] = useState(null);
 
   const openReader = (book) => {
     setReadingBook(book);
@@ -724,6 +676,16 @@ export default function ReaderProfile({ user }) {
   }, [user]);
 
   if (loading) return <div className="empty-state">Loading profile…</div>;
+
+  if (openGroupGenre) {
+    return (
+      <GroupChatRoom
+        user={user}
+        genre={openGroupGenre}
+        onBack={() => setOpenGroupGenre(null)}
+      />
+    );
+  }
 
   const broadGenres = deriveBroadGenres(initialGenres(savedProfile));
 
@@ -792,6 +754,14 @@ export default function ReaderProfile({ user }) {
               Pick a book from the <strong>Books</strong> tab and click <strong>📖 Read</strong> to open it here.
             </p>
           )}
+        </div>
+      )}
+
+      {tab === 'groups' && (
+        <div className="tab-panel">
+          <h3>👥 Beta Reader Groups</h3>
+          <p className="welcome">Join a genre tribe to discover other readers who share your taste.</p>
+          <GroupsPanel user={user} onOpen={setOpenGroupGenre} />
         </div>
       )}
 

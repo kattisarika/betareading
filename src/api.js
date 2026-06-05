@@ -241,3 +241,52 @@ export async function markInboxRead(userId, messageId) {
   return res.json();
 }
 
+export async function listGroups(userId) {
+  const res = await fetch(`${API_BASE}/api/groups?userId=${encodeURIComponent(userId)}`);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load groups');
+  return res.json();
+}
+
+export async function joinGroup(userId, genre) {
+  const res = await fetch(`${API_BASE}/api/groups/${encodeURIComponent(genre)}/join`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to join group');
+  return res.json();
+}
+
+export async function leaveGroup(userId, genre) {
+  const res = await fetch(`${API_BASE}/api/groups/${encodeURIComponent(genre)}/leave`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to leave group');
+  return res.json();
+}
+
+export async function listGroupMembers(userId, genre) {
+  const res = await fetch(`${API_BASE}/api/groups/${encodeURIComponent(genre)}/members?userId=${encodeURIComponent(userId)}`);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load members');
+  return res.json();
+}
+
+export async function listGroupMessages(userId, genre) {
+  const res = await fetch(`${API_BASE}/api/groups/${encodeURIComponent(genre)}/messages?userId=${encodeURIComponent(userId)}`);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to load messages');
+  return res.json();
+}
+
+export async function sendGroupMessage(userId, genre, text) {
+  const res = await fetch(`${API_BASE}/api/groups/${encodeURIComponent(genre)}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, text }),
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to send message');
+  return res.json();
+}
+
+

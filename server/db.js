@@ -157,3 +157,35 @@ const AdminMessageSchema = new mongoose.Schema(
 
 export const AdminMessage =
   mongoose.models.AdminMessage || mongoose.model('AdminMessage', AdminMessageSchema);
+
+const GroupMembershipSchema = new mongoose.Schema(
+  {
+    userId: { type: String, required: true, index: true },
+    genre: { type: String, required: true, index: true },
+    userName: { type: String },
+    userEmail: { type: String, lowercase: true, trim: true },
+    ageGroup: { type: String },
+  },
+  { timestamps: true }
+);
+
+GroupMembershipSchema.index({ userId: 1, genre: 1 }, { unique: true });
+
+export const GroupMembership =
+  mongoose.models.GroupMembership || mongoose.model('GroupMembership', GroupMembershipSchema);
+
+const GroupMessageSchema = new mongoose.Schema(
+  {
+    genre: { type: String, required: true, index: true },
+    fromUserId: { type: String, required: true, index: true },
+    fromName: { type: String },
+    fromRole: { type: String, enum: ['reader', 'author'], default: 'reader' },
+    text: { type: String, required: true, trim: true },
+  },
+  { timestamps: true }
+);
+
+GroupMessageSchema.index({ genre: 1, createdAt: 1 });
+
+export const GroupMessage =
+  mongoose.models.GroupMessage || mongoose.model('GroupMessage', GroupMessageSchema);

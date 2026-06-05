@@ -6,7 +6,7 @@ dotenv.config({ path: join(__dirname, '.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { connectMongo, UserProfile, Book, Ping, Message, Review, BlockedEmail, AdminMessage } from './db.js';
+import { connectMongo, UserProfile, Book, Ping, Message, Review, BlockedEmail, AdminMessage, GroupMembership, GroupMessage } from './db.js';
 import {
   S3Client,
   ListObjectsV2Command,
@@ -70,6 +70,8 @@ const NON_FICTION_SUBGENRES = [
   'cooking', 'travel',
 ];
 const ALL_READER_GENRES = new Set([...GENRES, ...FICTION_SUBGENRES, ...NON_FICTION_SUBGENRES]);
+const ALL_SUBGENRES = [...FICTION_SUBGENRES, ...NON_FICTION_SUBGENRES];
+const ALL_SUBGENRES_SET = new Set(ALL_SUBGENRES);
 const READER_AGE_GROUPS = new Set(['kids', 'preteens_13', 'teenager_18', 'adults_25']);
 
 function deriveBroadGenre(genres) {
@@ -852,6 +854,170 @@ app.get('/api/admin/stats', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+
+// 9. Beta Reader Groups — one group per subgenre. Readers join manually.
+// Authors can view (but not join) groups whose genre matches a book they've published.
+async function authorPublishedGenresFor(userId) {
+  const books = await Book.find({ userId, role: 'author' }).select('genres genre').lean();
+  const set = new Set();
+  for (const b of books) {
+    if (Array.isArray(b.genres)) for (const g of b.genres) if (ALL_SUBGENRES_SET.has(g)) set.add(g);
+  }
+  return set;
+}
+
+app.get('/api/groups', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    const profile = await UserProfile.findOne({ userId }).lean();
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    const role = profile.role;
+    const [memberships, counts, authorGenres] = await Promise.all([
+      role === 'reader' ? GroupMembership.find({ userId }).select('genre').lean() : Promise.resolve([]),
+      GroupMembership.aggregate([{ $group: { _id: '$genre', count: { $sum: 1 } } }]),
+      role === 'author' ? authorPublishedGenresFor(userId) : Promise.resolve(new Set()),
+    ]);
+    const myGenres = new Set(memberships.map((m) => m.genre));
+    const countMap = new Map(counts.map((c) => [c._id, c.count]));
+    const groups = ALL_SUBGENRES.map((genre) => ({
+      genre,
+      memberCount: countMap.get(genre) || 0,
+      isMember: myGenres.has(genre),
+      canView: role === 'reader' ? myGenres.has(genre) : (role === 'author' ? authorGenres.has(genre) : false),
+    }));
+    res.json({ groups, role });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/groups/:genre/join', async (req, res) => {
+  try {
+    const { genre } = req.params;
+    const { userId } = req.body || {};
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    if (!ALL_SUBGENRES_SET.has(genre)) return res.status(400).json({ error: 'Invalid genre' });
+    const profile = await UserProfile.findOne({ userId }).lean();
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    if (profile.role !== 'reader') return res.status(403).json({ error: 'Only readers can join groups' });
+    await GroupMembership.findOneAndUpdate(
+      { userId, genre },
+      {
+        userId, genre,
+        userName: profile.name,
+        userEmail: profile.email,
+        ageGroup: profile.ageGroup,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/groups/:genre/leave', async (req, res) => {
+  try {
+    const { genre } = req.params;
+    const { userId } = req.body || {};
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    if (!ALL_SUBGENRES_SET.has(genre)) return res.status(400).json({ error: 'Invalid genre' });
+    await GroupMembership.deleteOne({ userId, genre });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/groups/:genre/members', async (req, res) => {
+  try {
+    const { genre } = req.params;
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    if (!ALL_SUBGENRES_SET.has(genre)) return res.status(400).json({ error: 'Invalid genre' });
+    const profile = await UserProfile.findOne({ userId }).lean();
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    let allowed = false;
+    if (profile.role === 'reader') {
+      const member = await GroupMembership.findOne({ userId, genre }).lean();
+      allowed = !!member;
+    } else if (profile.role === 'author') {
+      const authorGenres = await authorPublishedGenresFor(userId);
+      allowed = authorGenres.has(genre);
+    } else if (profile.role === 'super_admin') {
+      allowed = true;
+    }
+    if (!allowed) return res.status(403).json({ error: 'Not allowed to view this group' });
+    const members = await GroupMembership.find({ genre })
+      .sort({ createdAt: 1 })
+      .select('userId userName userEmail ageGroup createdAt')
+      .lean();
+    res.json({
+      members: members.map((m) => ({
+        userId: m.userId,
+        name: m.userName || null,
+        email: m.userEmail || null,
+        ageGroup: m.ageGroup || null,
+        joinedAt: m.createdAt,
+      })),
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+async function isGroupMember(userId, genre) {
+  const m = await GroupMembership.findOne({ userId, genre }).lean();
+  return !!m;
+}
+
+app.get('/api/groups/:genre/messages', async (req, res) => {
+  try {
+    const { genre } = req.params;
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    if (!ALL_SUBGENRES_SET.has(genre)) return res.status(400).json({ error: 'Invalid genre' });
+    if (!(await isGroupMember(userId, genre))) {
+      return res.status(403).json({ error: 'Join the group to view its chat' });
+    }
+    const messages = await GroupMessage.find({ genre })
+      .sort({ createdAt: 1 })
+      .limit(500)
+      .lean();
+    res.json({ messages });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/groups/:genre/messages', async (req, res) => {
+  try {
+    const { genre } = req.params;
+    const { userId, text } = req.body || {};
+    if (!userId || !text || !text.trim()) return res.status(400).json({ error: 'userId and text required' });
+    if (!ALL_SUBGENRES_SET.has(genre)) return res.status(400).json({ error: 'Invalid genre' });
+    if (!(await isGroupMember(userId, genre))) {
+      return res.status(403).json({ error: 'Join the group to post' });
+    }
+    const profile = await UserProfile.findOne({ userId }).lean();
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    const msg = await GroupMessage.create({
+      genre,
+      fromUserId: userId,
+      fromName: profile.name,
+      fromRole: profile.role === 'author' ? 'author' : 'reader',
+      text: text.trim(),
+    });
+    res.json({ message: msg });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
+
 
 
 if (process.env.NODE_ENV === 'production') {
