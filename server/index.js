@@ -704,6 +704,19 @@ app.get('/api/admin/reviews', async (req, res) => {
   }
 });
 
+app.get('/api/admin/group-messages', async (req, res) => {
+  try {
+    if (!(await requireSuperAdmin(req, res))) return;
+    const { genre } = req.query;
+    const query = {};
+    if (genre) query.genre = genre;
+    const messages = await GroupMessage.find(query).sort({ createdAt: -1 }).limit(2000).lean();
+    res.json({ messages });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Public — called right after Google sign-in to gate access
 app.post('/api/check-access', async (req, res) => {
   try {

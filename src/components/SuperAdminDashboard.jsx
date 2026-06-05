@@ -8,6 +8,7 @@ const TABS = [
   { id: 'pings', label: 'Assignments', icon: '🔗' },
   { id: 'messages', label: 'Messages', icon: '💬' },
   { id: 'reviews', label: 'Reviews', icon: '⭐' },
+  { id: 'group-chats', label: 'Group Chats', icon: '👥' },
   { id: 'admin-messages', label: 'Sent', icon: '✉️' },
 ];
 
@@ -52,6 +53,7 @@ function AdminPanel({ tab, adminUserId }) {
   if (tab === 'pings') return <PingsPanel adminUserId={adminUserId} />;
   if (tab === 'messages') return <MessagesPanel adminUserId={adminUserId} />;
   if (tab === 'reviews') return <ReviewsPanel adminUserId={adminUserId} />;
+  if (tab === 'group-chats') return <GroupChatsPanel adminUserId={adminUserId} />;
   if (tab === 'admin-messages') return <AdminMessagesPanel adminUserId={adminUserId} />;
   return null;
 }
@@ -535,6 +537,98 @@ function ReviewsPanel({ adminUserId }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+
+function GroupChatsPanel({ adminUserId }) {
+  const [genre, setGenre] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const { data, err, loading } = useFetch(
+    () => adminApi.groupMessages(adminUserId, genre ? { genre } : {}),
+    [adminUserId, genre]
+  );
+  const messages = data?.messages || [];
+  const genres = Array.from(new Set(messages.map((m) => m.genre))).sort();
+  const total = messages.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+  const pageRows = messages.slice(start, start + pageSize);
+  return (
+    <div className="admin-table-wrap">
+      <div className="admin-toolbar">
+        <label style={{ fontSize: '0.9rem', color: '#555' }}>
+          Filter by group:{' '}
+          <select
+            value={genre}
+            onChange={(e) => { setGenre(e.target.value); setPage(1); }}
+          >
+            <option value="">All groups</option>
+            {genres.map((g) => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+        </label>
+        <div className="admin-pager">
+          <label className="admin-toolbar-check">
+            Rows per page:{' '}
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </label>
+          <span className="admin-pager-info">
+            {total === 0 ? '0 of 0' : `${start + 1}–${Math.min(start + pageSize, total)} of ${total}`}
+          </span>
+          <button
+            className="btn-mini"
+            disabled={safePage <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >‹ Prev</button>
+          <span className="admin-pager-info">Page {safePage} / {totalPages}</span>
+          <button
+            className="btn-mini"
+            disabled={safePage >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >Next ›</button>
+        </div>
+      </div>
+      {loading && <p>Loading…</p>}
+      {err && <p style={{ color: '#8C1515' }}>{err}</p>}
+      {!loading && !err && (
+        <>
+          <table className="admin-table">
+            <thead><tr>
+              <th>Sent</th><th>Group</th><th>From</th><th>Role</th><th>Message</th>
+            </tr></thead>
+            <tbody>
+              {pageRows.map((m) => (
+                <tr key={m._id}>
+                  <td>{fmtDate(m.createdAt)}</td>
+                  <td style={{ textTransform: 'capitalize' }}>{m.genre}</td>
+                  <td>{m.fromName || m.fromUserId}</td>
+                  <td>{m.fromRole}</td>
+                  <td className="admin-msg-cell">{m.text}</td>
+                </tr>
+              ))}
+              {total === 0 && (
+                <tr><td colSpan={5} style={{ textAlign: 'center', color: '#666' }}>No group chat messages yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+          {total >= 2000 && (
+            <p style={{ marginTop: 12, color: '#666' }}>Showing latest 2000 messages.</p>
+          )}
+        </>
+      )}
     </div>
   );
 }

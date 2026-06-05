@@ -182,6 +182,7 @@ export const adminApi = {
   pings: (adminUserId) => adminGet('/api/admin/pings', adminUserId),
   messages: (adminUserId, params = {}) => adminGet('/api/admin/messages', adminUserId, params),
   reviews: (adminUserId) => adminGet('/api/admin/reviews', adminUserId),
+  groupMessages: (adminUserId, params = {}) => adminGet('/api/admin/group-messages', adminUserId, params),
   stats: (adminUserId) => adminGet('/api/admin/stats', adminUserId),
   adminMessages: (adminUserId) => adminGet('/api/admin/admin-messages', adminUserId),
   blockUser: (adminUserId, userId, reason = '') =>
