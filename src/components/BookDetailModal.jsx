@@ -1,5 +1,27 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { listReviews, submitReview, getUserId } from '../api';
+
+let booksApiPromise = null;
+function loadGoogleBooksApi() {
+  if (booksApiPromise) return booksApiPromise;
+  booksApiPromise = new Promise((resolve, reject) => {
+    if (window.google?.books) {
+      window.google.books.load();
+      window.google.books.setOnLoadCallback(resolve);
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = 'https://www.google.com/books/jsapi.js';
+    s.async = true;
+    s.onload = () => {
+      window.google.books.load();
+      window.google.books.setOnLoadCallback(resolve);
+    };
+    s.onerror = () => reject(new Error('Failed to load Google Books viewer'));
+    document.head.appendChild(s);
+  });
+  return booksApiPromise;
+}
 
 function StarRow({ value, onChange, readOnly }) {
   return (
@@ -69,8 +91,29 @@ export default function BookDetailModal({ book, user, onClose }) {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showViewer, setShowViewer] = useState(false);
+  const [viewerStatus, setViewerStatus] = useState('idle'); // idle | loading | ready | not-available
+  const viewerRef = useRef(null);
   const myId = getUserId(user);
   const existing = reviews.find((r) => r.reviewerUserId === myId) || null;
+
+  useEffect(() => {
+    if (!showViewer || !viewerRef.current) return;
+    let cancelled = false;
+    setViewerStatus('loading');
+    loadGoogleBooksApi()
+      .then(() => {
+        if (cancelled || !viewerRef.current) return;
+        const viewer = new window.google.books.DefaultViewer(viewerRef.current);
+        viewer.load(
+          book.id,
+          () => { if (!cancelled) setViewerStatus('not-available'); },
+          () => { if (!cancelled) setViewerStatus('ready'); }
+        );
+      })
+      .catch(() => { if (!cancelled) setViewerStatus('not-available'); });
+    return () => { cancelled = true; };
+  }, [showViewer, book.id]);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -117,13 +160,39 @@ export default function BookDetailModal({ book, user, onClose }) {
               {book.publishedDate && <small>{book.publishedDate.slice(0, 4)}</small>}
               {book.pageCount && <small>{book.pageCount} pages</small>}
             </div>
-            {book.infoLink && (
-              <a href={book.infoLink} target="_blank" rel="noreferrer" className="btn-ghost btn-sm">
-                View on Google Books ↗
-              </a>
-            )}
+            <div className="book-modal-actions">
+              <button
+                type="button"
+                className="btn-primary btn-sm"
+                onClick={() => setShowViewer((v) => !v)}
+              >
+                {showViewer ? 'Hide preview' : '📖 Read preview here'}
+              </button>
+              {book.infoLink && (
+                <a href={book.infoLink} target="_blank" rel="noreferrer" className="btn-ghost btn-sm">
+                  Open on Google Books ↗
+                </a>
+              )}
+            </div>
           </div>
         </div>
+
+        {showViewer && (
+          <div className="book-modal-section">
+            <h4>Preview</h4>
+            {viewerStatus === 'loading' && <p className="welcome">Loading preview…</p>}
+            {viewerStatus === 'not-available' && (
+              <p className="welcome">
+                No preview is available for this book. Use the "Open on Google Books" link above to see more.
+              </p>
+            )}
+            <div
+              ref={viewerRef}
+              className="book-viewer"
+              style={{ display: viewerStatus === 'ready' ? 'block' : 'none' }}
+            />
+          </div>
+        )}
 
         {book.description && (
           <div className="book-modal-section">

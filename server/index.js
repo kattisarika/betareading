@@ -605,13 +605,13 @@ app.post('/api/super-admin-login', async (req, res) => {
     if (!isSuperAdminEmail(email)) {
       return res.status(403).json({ error: 'Not authorized' });
     }
+    const now = new Date();
     const profile = await UserProfile.findOneAndUpdate(
       { userId },
       {
-        userId,
-        email,
-        name,
-        role: 'super_admin',
+        $set: { userId, email, name, role: 'super_admin', lastLoginAt: now },
+        $inc: { loginCount: 1 },
+        $setOnInsert: { firstLoginAt: now },
         $unset: { genre: '', genres: '', favoriteAuthors: '', ageGroup: '', qualifications: '' },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -739,6 +739,17 @@ app.post('/api/check-access', async (req, res) => {
         error: 'Your access has been revoked. Contact support if you believe this is in error.',
       });
     }
+    if (userId) {
+      const now = new Date();
+      UserProfile.updateOne(
+        { userId },
+        {
+          $inc: { loginCount: 1 },
+          $set: { lastLoginAt: now },
+          $setOnInsert: { firstLoginAt: now },
+        }
+      ).catch((err) => console.warn('Login tracking failed:', err.message));
+    }
     res.json({ blocked: false });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -860,7 +871,12 @@ app.post('/api/inbox/read', async (req, res) => {
 app.get('/api/admin/stats', async (req, res) => {
   try {
     if (!(await requireSuperAdmin(req, res))) return;
-    const [totalUsers, totalAuthors, totalReaders, totalBooks, totalPings, totalMessages, totalReviews] = await Promise.all([
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [
+      totalUsers, totalAuthors, totalReaders, totalBooks, totalPings, totalMessages, totalReviews,
+      activeLast24h, activeLast7d, loginAgg,
+    ] = await Promise.all([
       UserProfile.countDocuments({}),
       UserProfile.countDocuments({ role: 'author' }),
       UserProfile.countDocuments({ role: 'reader' }),
@@ -868,10 +884,15 @@ app.get('/api/admin/stats', async (req, res) => {
       Ping.countDocuments({}),
       Message.countDocuments({}),
       Review.countDocuments({}),
+      UserProfile.countDocuments({ lastLoginAt: { $gte: oneDayAgo } }),
+      UserProfile.countDocuments({ lastLoginAt: { $gte: sevenDaysAgo } }),
+      UserProfile.aggregate([{ $group: { _id: null, total: { $sum: '$loginCount' } } }]),
     ]);
+    const totalLogins = loginAgg[0]?.total || 0;
     res.json({
       totalUsers, totalAuthors, totalReaders,
       totalBooks, totalPings, totalMessages, totalReviews,
+      totalLogins, activeLast24h, activeLast7d,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });

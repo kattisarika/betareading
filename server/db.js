@@ -30,6 +30,9 @@ const UserProfileSchema = new mongoose.Schema(
     blockedAt: { type: Date },
     blockedReason: { type: String, trim: true },
     blockedBy: { type: String }, // super admin userId
+    loginCount: { type: Number, default: 0 },
+    firstLoginAt: { type: Date },
+    lastLoginAt: { type: Date, index: true },
   },
   { timestamps: true }
 );

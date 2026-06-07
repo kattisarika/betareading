@@ -81,6 +81,9 @@ function StatsPanel({ adminUserId }) {
     ['Total users', data.totalUsers],
     ['Authors', data.totalAuthors],
     ['Readers', data.totalReaders],
+    ['Total logins', data.totalLogins],
+    ['Active last 24h', data.activeLast24h],
+    ['Active last 7d', data.activeLast7d],
     ['Books', data.totalBooks],
     ['Assignments (pings)', data.totalPings],
     ['Messages', data.totalMessages],
@@ -209,7 +212,7 @@ function UsersPanel({ adminUserId }) {
         <thead><tr>
           <th>Name</th><th>Email</th><th>Role</th><th>Genres</th>
           <th>Age group</th><th>Favorite authors</th><th>Qualifications</th>
-          <th>Joined</th><th>Status</th><th>Actions</th>
+          <th>Joined</th><th>Logins</th><th>Last login</th><th>Status</th><th>Actions</th>
         </tr></thead>
         <tbody>
           {pageRows.map((u) => (
@@ -222,6 +225,8 @@ function UsersPanel({ adminUserId }) {
               <td>{u.favoriteAuthors || '—'}</td>
               <td>{u.qualifications || '—'}</td>
               <td>{fmtDate(u.createdAt)}</td>
+              <td style={{ textAlign: 'right' }}>{u.loginCount || 0}</td>
+              <td>{u.lastLoginAt ? fmtDate(u.lastLoginAt) : '—'}</td>
               <td>
                 {u.blocked
                   ? <span className="status-pill status-declined">blocked</span>
