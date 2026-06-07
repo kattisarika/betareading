@@ -290,4 +290,51 @@ export async function sendGroupMessage(userId, genre, text) {
   return res.json();
 }
 
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const i = result.indexOf(',');
+      resolve(i >= 0 ? result.slice(i + 1) : result);
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+export const linkedinApi = {
+  status: async (userId) => {
+    const r = await fetch(`${API_BASE}/api/linkedin/status?userId=${encodeURIComponent(userId)}`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Failed to load LinkedIn status');
+    return r.json();
+  },
+  authUrl: async (userId) => {
+    const r = await fetch(`${API_BASE}/api/linkedin/auth-url?userId=${encodeURIComponent(userId)}`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Failed to get auth URL');
+    return r.json();
+  },
+  disconnect: async (userId) => {
+    const r = await fetch(`${API_BASE}/api/linkedin/disconnect`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Failed to disconnect');
+    return r.json();
+  },
+  post: async ({ userId, text, imageFile }) => {
+    let imageBase64, imageContentType;
+    if (imageFile) {
+      imageBase64 = await fileToBase64(imageFile);
+      imageContentType = imageFile.type || 'image/jpeg';
+    }
+    const r = await fetch(`${API_BASE}/api/linkedin/post`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, text, imageBase64, imageContentType }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Failed to post to LinkedIn');
+    return r.json();
+  },
+};
+
 

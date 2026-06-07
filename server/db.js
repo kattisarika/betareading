@@ -189,3 +189,19 @@ GroupMessageSchema.index({ genre: 1, createdAt: 1 });
 
 export const GroupMessage =
   mongoose.models.GroupMessage || mongoose.model('GroupMessage', GroupMessageSchema);
+
+const LinkedInConnectionSchema = new mongoose.Schema(
+  {
+    userId: { type: String, required: true, unique: true, index: true },
+    personUrn: { type: String, required: true },
+    accessToken: { type: String, required: true },
+    expiresAt: { type: Date, required: true },
+    scope: { type: String },
+    name: { type: String },
+    email: { type: String },
+  },
+  { timestamps: true }
+);
+
+export const LinkedInConnection =
+  mongoose.models.LinkedInConnection || mongoose.model('LinkedInConnection', LinkedInConnectionSchema);

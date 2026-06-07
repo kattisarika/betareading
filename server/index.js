@@ -6,7 +6,7 @@ dotenv.config({ path: join(__dirname, '.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { connectMongo, UserProfile, Book, Ping, Message, Review, BlockedEmail, AdminMessage, GroupMembership, GroupMessage } from './db.js';
+import { connectMongo, UserProfile, Book, Ping, Message, Review, BlockedEmail, AdminMessage, GroupMembership, GroupMessage, LinkedInConnection } from './db.js';
 import {
   S3Client,
   ListObjectsV2Command,
@@ -17,6 +17,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { generateAudioForBook, scanBookContent } from './tts.js';
+import { getAuthUrl as linkedinAuthUrl, exchangeCode as linkedinExchange, postTextOnly as linkedinPostText, postWithImage as linkedinPostImage } from './linkedin.js';
 
 const TTS_AUTO = String(process.env.TTS_AUTO || 'true').toLowerCase() === 'true';
 
@@ -29,7 +30,16 @@ const {
   AWS_SECRET_ACCESS_KEY,
   MONGODB_URI,
   SUPER_ADMIN_EMAIL = '',
+  LINKEDIN_CLIENT_ID,
+  LINKEDIN_CLIENT_SECRET,
+  LINKEDIN_REDIRECT_URI,
+  GOOGLE_BOOKS_API_KEY,
 } = process.env;
+
+const LINKEDIN_CONFIGURED = Boolean(LINKEDIN_CLIENT_ID && LINKEDIN_CLIENT_SECRET && LINKEDIN_REDIRECT_URI);
+if (!LINKEDIN_CONFIGURED) {
+  console.warn('⚠️  LinkedIn env vars missing — Post Content → LinkedIn will be disabled.');
+}
 
 const SUPER_ADMIN_EMAIL_NORMALIZED = SUPER_ADMIN_EMAIL.trim().toLowerCase();
 
@@ -50,7 +60,7 @@ const s3 = new S3Client({
 
 const app = express();
 app.use(cors({ origin: CORS_ORIGIN }));
-app.use(express.json());
+app.use(express.json({ limit: '12mb' }));
 
 const SIGN_EXPIRES = 60 * 5; // 5 minutes
 
@@ -1032,6 +1042,131 @@ app.post('/api/groups/:genre/messages', async (req, res) => {
 
 
 
+
+// ===== LinkedIn integration =====
+
+function linkedinCallbackHtml(ok, message) {
+  const safe = String(message || '').replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
+  return `<!doctype html><html><head><title>LinkedIn ${ok ? 'connected' : 'error'}</title>
+<style>body{font-family:Roboto,system-ui,sans-serif;padding:48px;text-align:center;background:#e5e2d5;color:#0d4d3d}.err{color:#b91c1c}</style></head>
+<body><h2 class="${ok ? '' : 'err'}">${ok ? '✅' : '❌'} ${safe}</h2>
+<p>This window will close automatically.</p>
+<script>try{window.opener&&window.opener.postMessage({source:'flipp-linkedin',ok:${ok ? 'true' : 'false'}}, '*');}catch(e){}setTimeout(()=>window.close(),1200);</script>
+</body></html>`;
+}
+
+app.get('/api/linkedin/auth-url', (req, res) => {
+  try {
+    if (!LINKEDIN_CONFIGURED) return res.status(503).json({ error: 'LinkedIn not configured on server' });
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    const url = linkedinAuthUrl({ clientId: LINKEDIN_CLIENT_ID, redirectUri: LINKEDIN_REDIRECT_URI, state: String(userId) });
+    res.json({ url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/linkedin/callback', async (req, res) => {
+  const { code, state, error, error_description } = req.query;
+  if (error) return res.send(linkedinCallbackHtml(false, error_description || error));
+  try {
+    if (!LINKEDIN_CONFIGURED) throw new Error('LinkedIn not configured');
+    if (!code) throw new Error('Missing code');
+    const userId = String(state || '');
+    if (!userId) throw new Error('Missing state');
+    const result = await linkedinExchange({
+      code, clientId: LINKEDIN_CLIENT_ID, clientSecret: LINKEDIN_CLIENT_SECRET, redirectUri: LINKEDIN_REDIRECT_URI,
+    });
+    await LinkedInConnection.findOneAndUpdate(
+      { userId },
+      {
+        userId, personUrn: result.sub, accessToken: result.accessToken,
+        expiresAt: new Date(Date.now() + (result.expiresInSeconds || 0) * 1000),
+        scope: result.scope, name: result.name, email: result.email,
+      },
+      { upsert: true, new: true }
+    );
+    res.send(linkedinCallbackHtml(true, `Connected as ${result.name || result.email || 'LinkedIn user'}`));
+  } catch (e) {
+    res.status(500).send(linkedinCallbackHtml(false, e.message));
+  }
+});
+
+app.get('/api/linkedin/status', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    if (!LINKEDIN_CONFIGURED) return res.json({ configured: false, connected: false });
+    const conn = await LinkedInConnection.findOne({ userId }).lean();
+    if (!conn) return res.json({ configured: true, connected: false });
+    res.json({
+      configured: true,
+      connected: true,
+      name: conn.name,
+      expiresAt: conn.expiresAt,
+      expired: conn.expiresAt && new Date(conn.expiresAt) < new Date(),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/linkedin/disconnect', async (req, res) => {
+  try {
+    const { userId } = req.body || {};
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    await LinkedInConnection.deleteOne({ userId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/linkedin/post', async (req, res) => {
+  try {
+    if (!LINKEDIN_CONFIGURED) return res.status(503).json({ error: 'LinkedIn not configured on server' });
+    const { userId, text, imageBase64, imageContentType } = req.body || {};
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    if (!text || !String(text).trim()) return res.status(400).json({ error: 'text required' });
+    const conn = await LinkedInConnection.findOne({ userId });
+    if (!conn) return res.status(400).json({ error: 'LinkedIn not connected' });
+    if (conn.expiresAt && new Date(conn.expiresAt) < new Date()) {
+      return res.status(401).json({ error: 'LinkedIn token expired — please reconnect' });
+    }
+    let postId;
+    if (imageBase64 && imageContentType) {
+      const buf = Buffer.from(imageBase64, 'base64');
+      postId = await linkedinPostImage({
+        accessToken: conn.accessToken, personUrn: conn.personUrn,
+        text: String(text).trim(), imageBuffer: buf, contentType: imageContentType,
+      });
+    } else {
+      postId = await linkedinPostText({
+        accessToken: conn.accessToken, personUrn: conn.personUrn, text: String(text).trim(),
+      });
+    }
+    res.json({ ok: true, postId });
+  } catch (e) {
+    console.error('LinkedIn post error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== Google Books proxy =====
+app.get('/api/google-books', async (req, res) => {
+  try {
+    const { q, max } = req.query;
+    if (!q || !String(q).trim()) return res.status(400).json({ error: 'q required' });
+    const maxResults = Math.min(Math.max(parseInt(max, 10) || 24, 1), 40);
+    const params = new URLSearchParams({
+      q: String(q),
+      maxResults: String(maxResults),
+      printType: 'books',
+    });
+    if (GOOGLE_BOOKS_API_KEY) params.set('key', GOOGLE_BOOKS_API_KEY);
+    const r = await fetch(`https://www.googleapis.com/books/v1/volumes?${params.toString()}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) return res.status(r.status).json({ error: data?.error?.message || `Google Books API error (${r.status})` });
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
 if (process.env.NODE_ENV === 'production') {
   const distDir = join(__dirname, '..', 'dist');

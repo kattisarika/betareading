@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch --watch-path=index.js --watch-path=db.js --watch-path=.env index.js",
+    "dev": "node --watch --watch-path=index.js --watch-path=db.js --watch-path=linkedin.js --watch-path=.env index.js",
     "start": "node index.js"
   },
   "dependencies": {

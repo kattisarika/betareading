@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { listBooks, deleteBook, presignUpload, uploadToS3, saveBook, listReviews, getUserId, flagCategoryList } from '../api';
+import { listBooks, deleteBook, presignUpload, uploadToS3, saveBook, listReviews, getUserId, flagCategoryList, linkedinApi } from '../api';
 import ChatPanel from './ChatPanel';
 import ContentWarning from './ContentWarning';
 
@@ -256,6 +256,161 @@ export function AuthorMessages({ user }) {
         title="💬 Conversations"
         emptyMessage="No conversations yet — ping a beta reader from My Books to start one."
       />
+    </div>
+  );
+}
+
+const SOCIAL_PLATFORMS = [
+  { value: 'linkedin', label: 'LinkedIn', icon: '💼' },
+  { value: 'instagram', label: 'Instagram', icon: '📷' },
+  { value: 'facebook', label: 'Facebook', icon: '📘' },
+  { value: 'twitter', label: 'Twitter / X', icon: '🐦' },
+];
+
+export function PostContentPanel({ user }) {
+  const [text, setText] = useState('');
+  const [image, setImage] = useState(null);
+  const [video, setVideo] = useState(null);
+  const [platforms, setPlatforms] = useState(() => new Set());
+  const [message, setMessage] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [liStatus, setLiStatus] = useState({ loading: true, configured: false, connected: false });
+
+  const refreshLinkedIn = useCallback(async () => {
+    try {
+      const s = await linkedinApi.status(getUserId(user));
+      setLiStatus({ loading: false, ...s });
+    } catch {
+      setLiStatus({ loading: false, configured: false, connected: false });
+    }
+  }, [user]);
+
+  useEffect(() => { refreshLinkedIn(); }, [refreshLinkedIn]);
+
+  useEffect(() => {
+    const onMsg = (e) => {
+      if (e?.data?.source === 'flipp-linkedin') refreshLinkedIn();
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [refreshLinkedIn]);
+
+  const togglePlatform = (value) => {
+    setPlatforms((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value); else next.add(value);
+      return next;
+    });
+  };
+
+  const connectLinkedIn = async () => {
+    try {
+      const { url } = await linkedinApi.authUrl(getUserId(user));
+      window.open(url, 'flipp-linkedin', 'width=600,height=720');
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    }
+  };
+
+  const disconnectLinkedIn = async () => {
+    try {
+      await linkedinApi.disconnect(getUserId(user));
+      refreshLinkedIn();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMessage(null);
+    if (!text.trim()) { setMessage({ type: 'error', text: 'Please enter some text for your post.' }); return; }
+    if (!platforms.size) { setMessage({ type: 'error', text: 'Please select at least one platform.' }); return; }
+    if (platforms.has('linkedin')) {
+      if (!liStatus.configured) { setMessage({ type: 'error', text: 'LinkedIn is not configured on the server.' }); return; }
+      if (!liStatus.connected || liStatus.expired) { setMessage({ type: 'error', text: 'Please connect LinkedIn first.' }); return; }
+    }
+
+    setSubmitting(true);
+    const results = [];
+    try {
+      if (platforms.has('linkedin')) {
+        try {
+          await linkedinApi.post({ userId: getUserId(user), text: text.trim(), imageFile: image });
+          results.push('✅ LinkedIn');
+        } catch (err) {
+          results.push(`❌ LinkedIn (${err.message})`);
+        }
+      }
+      for (const p of platforms) {
+        if (p === 'linkedin') continue;
+        results.push(`⏳ ${p} (coming soon)`);
+      }
+      const hasError = results.some((r) => r.startsWith('❌'));
+      setMessage({ type: hasError ? 'error' : 'success', text: results.join(' · ') });
+      if (!hasError) { setText(''); setImage(null); setVideo(null); setPlatforms(new Set()); }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="tab-panel">
+      <h3>📝 Post Content</h3>
+      <p className="welcome">Share updates with your readers and cross-post to your social channels.</p>
+      <form className="upload-form" onSubmit={handleSubmit}>
+        <label className="field">
+          <span>Text</span>
+          <textarea rows="6" value={text} onChange={(e) => setText(e.target.value)} placeholder="What do you want to share?" />
+        </label>
+        <label className="field">
+          <span>Image (optional)</span>
+          <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files?.[0] || null)} />
+          {image && <small>{image.name} · {(image.size / 1024).toFixed(0)} KB</small>}
+        </label>
+        <label className="field">
+          <span>Video (optional)</span>
+          <input type="file" accept="video/*" onChange={(e) => setVideo(e.target.files?.[0] || null)} />
+          {video && <small>{video.name} · {(video.size / (1024 * 1024)).toFixed(1)} MB</small>}
+        </label>
+        <fieldset className="genre-group">
+          <legend>Post to</legend>
+          <div className="genre-checkbox-grid">
+            {SOCIAL_PLATFORMS.map((p) => (
+              <label key={p.value} className="genre-checkbox">
+                <input
+                  type="checkbox"
+                  checked={platforms.has(p.value)}
+                  onChange={() => togglePlatform(p.value)}
+                />
+                <span>{p.icon} {p.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {platforms.has('linkedin') && (
+          <div className="field">
+            {liStatus.loading ? (
+              <small>Checking LinkedIn connection…</small>
+            ) : !liStatus.configured ? (
+              <small style={{ color: '#b91c1c' }}>LinkedIn is not configured on the server.</small>
+            ) : liStatus.connected && !liStatus.expired ? (
+              <small>
+                ✅ LinkedIn connected{liStatus.name ? ` as ${liStatus.name}` : ''}{' '}
+                · <button type="button" className="btn-ghost btn-sm" onClick={disconnectLinkedIn}>Disconnect</button>
+              </small>
+            ) : (
+              <button type="button" className="btn-ghost" onClick={connectLinkedIn}>
+                🔗 Connect LinkedIn
+              </button>
+            )}
+          </div>
+        )}
+        {message && <div className={`flash flash-${message.type}`}>{message.text}</div>}
+        <button type="submit" className="btn-primary btn-post-submit" disabled={submitting}>
+          {submitting ? 'Submitting…' : 'Submit'}
+        </button>
+      </form>
     </div>
   );
 }

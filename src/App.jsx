@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import './App.css';
-import { MyBooks, BookReviews, UploadBook, AuthorMessages, AuthorReader } from './components/AuthorTabs';
+import { MyBooks, BookReviews, UploadBook, AuthorMessages, AuthorReader, PostContentPanel } from './components/AuthorTabs';
 import ReaderProfile from './components/ReaderProfile';
+import DiscoverBooks from './components/DiscoverBooks';
 import FindBetaReader from './components/FindBetaReader';
 import SuperAdminDashboard from './components/SuperAdminDashboard';
 import GroupsPanel from './components/GroupsPanel';
@@ -20,7 +21,13 @@ const AUTHOR_TABS = [
   { id: 'messages', label: 'Messages', icon: '💬' },
   { id: 'reviews', label: 'Book Reviews', icon: '⭐' },
   { id: 'groups', label: 'Reader Groups', icon: '👥' },
+  { id: 'post-content', label: 'Post Content', icon: '📝' },
   { id: 'upload', label: 'Upload Book', icon: '⬆️' },
+];
+
+const READER_TABS = [
+  { id: 'hub', label: 'My Hub', icon: '📖' },
+  { id: 'discover', label: 'Discover Books', icon: '🌐' },
 ];
 
 function Bookshelf() {
@@ -118,6 +125,7 @@ function AuthorTabPanel({ tab, user, refreshKey, onUploaded, onFindBetaReader, o
       <GroupsPanel user={user} readOnly />
     </div>
   );
+  if (tab === 'post-content') return <PostContentPanel user={user} />;
   return <UploadBook user={user} onUploaded={onUploaded} />;
 }
 
@@ -189,6 +197,7 @@ export default function App() {
   const [role, setRole] = useState(null);
   const [user, setUser] = useState(null);
   const [authorTab, setAuthorTab] = useState('books');
+  const [readerTab, setReaderTab] = useState('hub');
   const [booksRefresh, setBooksRefresh] = useState(0);
   const [findReaderForBook, setFindReaderForBook] = useState(null);
   const [authorReadingBook, setAuthorReadingBook] = useState(null);
@@ -213,7 +222,22 @@ export default function App() {
 
             <AdminInbox userId={getUserId(user)} />
 
-            {role === 'reader' && <ReaderProfile user={user} />}
+            {role === 'reader' && (
+              <>
+                <nav className="tabs">
+                  {READER_TABS.map((t) => (
+                    <button
+                      key={t.id}
+                      className={`tab ${readerTab === t.id ? 'tab-active' : ''}`}
+                      onClick={() => setReaderTab(t.id)}
+                    >
+                      <span className="tab-icon">{t.icon}</span> {t.label}
+                    </button>
+                  ))}
+                </nav>
+                {readerTab === 'discover' ? <DiscoverBooks user={user} /> : <ReaderProfile user={user} />}
+              </>
+            )}
 
             {role === 'author' && (
               findReaderForBook ? (
