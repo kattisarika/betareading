@@ -337,4 +337,38 @@ export const linkedinApi = {
   },
 };
 
+export const twitterApi = {
+  status: async (userId) => {
+    const r = await fetch(`${API_BASE}/api/twitter/status?userId=${encodeURIComponent(userId)}`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Failed to load Twitter status');
+    return r.json();
+  },
+  authUrl: async (userId) => {
+    const r = await fetch(`${API_BASE}/api/twitter/auth-url?userId=${encodeURIComponent(userId)}`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Failed to get auth URL');
+    return r.json();
+  },
+  disconnect: async (userId) => {
+    const r = await fetch(`${API_BASE}/api/twitter/disconnect`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Failed to disconnect');
+    return r.json();
+  },
+  post: async ({ userId, text, imageFile }) => {
+    let imageBase64, imageContentType;
+    if (imageFile) {
+      imageBase64 = await fileToBase64(imageFile);
+      imageContentType = imageFile.type || 'image/jpeg';
+    }
+    const r = await fetch(`${API_BASE}/api/twitter/post`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, text, imageBase64, imageContentType }),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Failed to post to Twitter');
+    return r.json();
+  },
+};
+
 

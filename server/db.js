@@ -208,3 +208,20 @@ const LinkedInConnectionSchema = new mongoose.Schema(
 
 export const LinkedInConnection =
   mongoose.models.LinkedInConnection || mongoose.model('LinkedInConnection', LinkedInConnectionSchema);
+
+const TwitterConnectionSchema = new mongoose.Schema(
+  {
+    userId: { type: String, required: true, unique: true, index: true },
+    twitterUserId: { type: String, required: true },
+    username: { type: String },
+    name: { type: String },
+    accessToken: { type: String, required: true },
+    refreshToken: { type: String },
+    expiresAt: { type: Date, required: true },
+    scope: { type: String },
+  },
+  { timestamps: true }
+);
+
+export const TwitterConnection =
+  mongoose.models.TwitterConnection || mongoose.model('TwitterConnection', TwitterConnectionSchema);

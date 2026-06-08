@@ -4,9 +4,10 @@ import dotenv from 'dotenv';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, '.env') });
 
+import { randomBytes as nodeRandomBytes } from 'node:crypto';
 import express from 'express';
 import cors from 'cors';
-import { connectMongo, UserProfile, Book, Ping, Message, Review, BlockedEmail, AdminMessage, GroupMembership, GroupMessage, LinkedInConnection } from './db.js';
+import { connectMongo, UserProfile, Book, Ping, Message, Review, BlockedEmail, AdminMessage, GroupMembership, GroupMessage, LinkedInConnection, TwitterConnection } from './db.js';
 import {
   S3Client,
   ListObjectsV2Command,
@@ -18,6 +19,15 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { generateAudioForBook, scanBookContent } from './tts.js';
 import { getAuthUrl as linkedinAuthUrl, exchangeCode as linkedinExchange, postTextOnly as linkedinPostText, postWithImage as linkedinPostImage } from './linkedin.js';
+import {
+  createPkcePair as twitterPkce,
+  getAuthUrl as twitterAuthUrl,
+  exchangeCode as twitterExchange,
+  refreshAccessToken as twitterRefresh,
+  uploadMedia as twitterUploadMedia,
+  postTweet as twitterPostTweet,
+  truncateForTwitter,
+} from './twitter.js';
 
 const TTS_AUTO = String(process.env.TTS_AUTO || 'true').toLowerCase() === 'true';
 
@@ -34,11 +44,19 @@ const {
   LINKEDIN_CLIENT_SECRET,
   LINKEDIN_REDIRECT_URI,
   GOOGLE_BOOKS_API_KEY,
+  TWITTER_CLIENT_ID,
+  TWITTER_CLIENT_SECRET,
+  TWITTER_REDIRECT_URI,
 } = process.env;
 
 const LINKEDIN_CONFIGURED = Boolean(LINKEDIN_CLIENT_ID && LINKEDIN_CLIENT_SECRET && LINKEDIN_REDIRECT_URI);
 if (!LINKEDIN_CONFIGURED) {
   console.warn('⚠️  LinkedIn env vars missing — Post Content → LinkedIn will be disabled.');
+}
+
+const TWITTER_CONFIGURED = Boolean(TWITTER_CLIENT_ID && TWITTER_CLIENT_SECRET && TWITTER_REDIRECT_URI);
+if (!TWITTER_CONFIGURED) {
+  console.warn('⚠️  Twitter env vars missing — Post Content → Twitter will be disabled.');
 }
 
 const SUPER_ADMIN_EMAIL_NORMALIZED = SUPER_ADMIN_EMAIL.trim().toLowerCase();
@@ -1164,6 +1182,155 @@ app.post('/api/linkedin/post', async (req, res) => {
     res.json({ ok: true, postId });
   } catch (e) {
     console.error('LinkedIn post error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== Twitter integration =====
+
+const twitterStateStore = new Map(); // state -> { userId, codeVerifier, createdAt }
+const TWITTER_STATE_TTL_MS = 10 * 60 * 1000;
+function pruneTwitterStates() {
+  const now = Date.now();
+  for (const [k, v] of twitterStateStore) {
+    if (now - v.createdAt > TWITTER_STATE_TTL_MS) twitterStateStore.delete(k);
+  }
+}
+
+function twitterCallbackHtml(ok, message) {
+  const safe = String(message || '').replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]));
+  return `<!doctype html><html><head><title>Twitter ${ok ? 'connected' : 'error'}</title>
+<style>body{font-family:Roboto,system-ui,sans-serif;padding:48px;text-align:center;background:#e5e2d5;color:#0d4d3d}.err{color:#b91c1c}</style></head>
+<body><h2 class="${ok ? '' : 'err'}">${ok ? '✅' : '❌'} ${safe}</h2>
+<p>This window will close automatically.</p>
+<script>try{window.opener&&window.opener.postMessage({source:'flipp-twitter',ok:${ok ? 'true' : 'false'}}, '*');}catch(e){}setTimeout(()=>window.close(),1200);</script>
+</body></html>`;
+}
+
+async function getValidTwitterAccessToken(conn) {
+  if (conn.expiresAt && new Date(conn.expiresAt).getTime() - Date.now() > 60 * 1000) {
+    return conn.accessToken;
+  }
+  if (!conn.refreshToken) throw new Error('Twitter token expired — please reconnect');
+  const r = await twitterRefresh({
+    refreshToken: conn.refreshToken,
+    clientId: TWITTER_CLIENT_ID,
+    clientSecret: TWITTER_CLIENT_SECRET,
+  });
+  conn.accessToken = r.accessToken;
+  conn.refreshToken = r.refreshToken;
+  conn.expiresAt = new Date(Date.now() + (r.expiresInSeconds || 0) * 1000);
+  if (r.scope) conn.scope = r.scope;
+  await conn.save();
+  return conn.accessToken;
+}
+
+app.get('/api/twitter/auth-url', (req, res) => {
+  try {
+    if (!TWITTER_CONFIGURED) return res.status(503).json({ error: 'Twitter not configured on server' });
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    pruneTwitterStates();
+    const { verifier, challenge } = twitterPkce();
+    const state = nodeRandomBytes(16).toString('hex');
+    twitterStateStore.set(state, { userId: String(userId), codeVerifier: verifier, createdAt: Date.now() });
+    const url = twitterAuthUrl({
+      clientId: TWITTER_CLIENT_ID,
+      redirectUri: TWITTER_REDIRECT_URI,
+      state,
+      codeChallenge: challenge,
+    });
+    res.json({ url });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/twitter/callback', async (req, res) => {
+  const { code, state, error, error_description } = req.query;
+  if (error) return res.send(twitterCallbackHtml(false, error_description || error));
+  try {
+    if (!TWITTER_CONFIGURED) throw new Error('Twitter not configured');
+    if (!code) throw new Error('Missing code');
+    if (!state) throw new Error('Missing state');
+    const entry = twitterStateStore.get(String(state));
+    if (!entry) throw new Error('Invalid or expired state');
+    twitterStateStore.delete(String(state));
+    const result = await twitterExchange({
+      code,
+      clientId: TWITTER_CLIENT_ID,
+      clientSecret: TWITTER_CLIENT_SECRET,
+      redirectUri: TWITTER_REDIRECT_URI,
+      codeVerifier: entry.codeVerifier,
+    });
+    await TwitterConnection.findOneAndUpdate(
+      { userId: entry.userId },
+      {
+        userId: entry.userId,
+        twitterUserId: result.userId,
+        username: result.username,
+        name: result.name,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+        expiresAt: new Date(Date.now() + (result.expiresInSeconds || 0) * 1000),
+        scope: result.scope,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    res.send(twitterCallbackHtml(true, `Connected as @${result.username || result.name || 'Twitter user'}`));
+  } catch (e) {
+    res.status(500).send(twitterCallbackHtml(false, e.message));
+  }
+});
+
+app.get('/api/twitter/status', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    if (!TWITTER_CONFIGURED) return res.json({ configured: false, connected: false });
+    const conn = await TwitterConnection.findOne({ userId }).lean();
+    if (!conn) return res.json({ configured: true, connected: false });
+    res.json({
+      configured: true,
+      connected: true,
+      username: conn.username,
+      name: conn.name,
+      expired: conn.expiresAt && new Date(conn.expiresAt) < new Date() && !conn.refreshToken,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/twitter/disconnect', async (req, res) => {
+  try {
+    const { userId } = req.body || {};
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    await TwitterConnection.deleteOne({ userId });
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/twitter/post', async (req, res) => {
+  try {
+    if (!TWITTER_CONFIGURED) return res.status(503).json({ error: 'Twitter not configured on server' });
+    const { userId, text, imageBase64, imageContentType } = req.body || {};
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+    if (!text || !String(text).trim()) return res.status(400).json({ error: 'text required' });
+    const conn = await TwitterConnection.findOne({ userId });
+    if (!conn) return res.status(400).json({ error: 'Twitter not connected' });
+    const accessToken = await getValidTwitterAccessToken(conn);
+    const tweetText = truncateForTwitter(String(text).trim());
+    const mediaIds = [];
+    if (imageBase64 && imageContentType) {
+      try {
+        const buf = Buffer.from(imageBase64, 'base64');
+        const mediaId = await twitterUploadMedia({ accessToken, imageBuffer: buf, contentType: imageContentType });
+        mediaIds.push(mediaId);
+      } catch (mErr) {
+        console.warn('Twitter media upload skipped:', mErr.message);
+      }
+    }
+    const tweetId = await twitterPostTweet({ accessToken, text: tweetText, mediaIds });
+    res.json({ ok: true, tweetId, truncated: tweetText.length < String(text).trim().length });
+  } catch (e) {
+    console.error('Twitter post error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });

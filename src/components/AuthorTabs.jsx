@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { listBooks, deleteBook, presignUpload, uploadToS3, saveBook, listReviews, getUserId, flagCategoryList, linkedinApi } from '../api';
+import { listBooks, deleteBook, presignUpload, uploadToS3, saveBook, listReviews, getUserId, flagCategoryList, linkedinApi, twitterApi } from '../api';
 import ChatPanel from './ChatPanel';
 import ContentWarning from './ContentWarning';
 
@@ -275,6 +275,7 @@ export function PostContentPanel({ user }) {
   const [message, setMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [liStatus, setLiStatus] = useState({ loading: true, configured: false, connected: false });
+  const [twStatus, setTwStatus] = useState({ loading: true, configured: false, connected: false });
 
   const refreshLinkedIn = useCallback(async () => {
     try {
@@ -285,15 +286,25 @@ export function PostContentPanel({ user }) {
     }
   }, [user]);
 
-  useEffect(() => { refreshLinkedIn(); }, [refreshLinkedIn]);
+  const refreshTwitter = useCallback(async () => {
+    try {
+      const s = await twitterApi.status(getUserId(user));
+      setTwStatus({ loading: false, ...s });
+    } catch {
+      setTwStatus({ loading: false, configured: false, connected: false });
+    }
+  }, [user]);
+
+  useEffect(() => { refreshLinkedIn(); refreshTwitter(); }, [refreshLinkedIn, refreshTwitter]);
 
   useEffect(() => {
     const onMsg = (e) => {
       if (e?.data?.source === 'flipp-linkedin') refreshLinkedIn();
+      if (e?.data?.source === 'flipp-twitter') refreshTwitter();
     };
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
-  }, [refreshLinkedIn]);
+  }, [refreshLinkedIn, refreshTwitter]);
 
   const togglePlatform = (value) => {
     setPlatforms((prev) => {
@@ -321,6 +332,24 @@ export function PostContentPanel({ user }) {
     }
   };
 
+  const connectTwitter = async () => {
+    try {
+      const { url } = await twitterApi.authUrl(getUserId(user));
+      window.open(url, 'flipp-twitter', 'width=600,height=720');
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    }
+  };
+
+  const disconnectTwitter = async () => {
+    try {
+      await twitterApi.disconnect(getUserId(user));
+      refreshTwitter();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
@@ -329,6 +358,10 @@ export function PostContentPanel({ user }) {
     if (platforms.has('linkedin')) {
       if (!liStatus.configured) { setMessage({ type: 'error', text: 'LinkedIn is not configured on the server.' }); return; }
       if (!liStatus.connected || liStatus.expired) { setMessage({ type: 'error', text: 'Please connect LinkedIn first.' }); return; }
+    }
+    if (platforms.has('twitter')) {
+      if (!twStatus.configured) { setMessage({ type: 'error', text: 'Twitter is not configured on the server.' }); return; }
+      if (!twStatus.connected || twStatus.expired) { setMessage({ type: 'error', text: 'Please connect Twitter first.' }); return; }
     }
 
     setSubmitting(true);
@@ -342,8 +375,16 @@ export function PostContentPanel({ user }) {
           results.push(`❌ LinkedIn (${err.message})`);
         }
       }
+      if (platforms.has('twitter')) {
+        try {
+          const r = await twitterApi.post({ userId: getUserId(user), text: text.trim(), imageFile: image });
+          results.push(r?.truncated ? '✅ Twitter (truncated)' : '✅ Twitter');
+        } catch (err) {
+          results.push(`❌ Twitter (${err.message})`);
+        }
+      }
       for (const p of platforms) {
-        if (p === 'linkedin') continue;
+        if (p === 'linkedin' || p === 'twitter') continue;
         results.push(`⏳ ${p} (coming soon)`);
       }
       const hasError = results.some((r) => r.startsWith('❌'));
@@ -403,6 +444,29 @@ export function PostContentPanel({ user }) {
               <button type="button" className="btn-ghost" onClick={connectLinkedIn}>
                 🔗 Connect LinkedIn
               </button>
+            )}
+          </div>
+        )}
+        {platforms.has('twitter') && (
+          <div className="field">
+            {twStatus.loading ? (
+              <small>Checking Twitter connection…</small>
+            ) : !twStatus.configured ? (
+              <small style={{ color: '#b91c1c' }}>Twitter is not configured on the server.</small>
+            ) : twStatus.connected && !twStatus.expired ? (
+              <small>
+                ✅ Twitter connected{twStatus.username ? ` as @${twStatus.username}` : ''}{' '}
+                · <button type="button" className="btn-ghost btn-sm" onClick={disconnectTwitter}>Disconnect</button>
+              </small>
+            ) : (
+              <button type="button" className="btn-ghost" onClick={connectTwitter}>
+                🔗 Connect Twitter
+              </button>
+            )}
+            {text.length > 280 && (
+              <small style={{ color: '#c4623a', display: 'block', marginTop: 4 }}>
+                ⚠️ {text.length}/280 — your tweet will be truncated to 280 characters with “…”
+              </small>
             )}
           </div>
         )}
